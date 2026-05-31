@@ -277,8 +277,18 @@ function getDayFromDate(dateValue) {
 }
 
 /**
+/**
+ * Helper to format a day, month, and year into dd/MM/yyyy date format string.
+ */
+function formatGridDate(day, month, year) {
+  var dd = day < 10 ? "0" + day : day;
+  var mm = (month + 1) < 10 ? "0" + (month + 1) : (month + 1);
+  return dd + "/" + mm + "/" + year;
+}
+
+/**
  * Core reporting engine that automatically transforms raw transactional logs into a 
- * gorgeous, styled, horizontal Monthly Grid Register (In, Out, and Status columns for all 31 days).
+ * gorgeous, styled, horizontal Monthly Grid Register (In, Out, and Status columns for the current month).
  * Completely optimized with frozen rows, frozen columns, royal blue headers, and conditional coloring.
  */
 function generateMonthlyReport() {
@@ -310,6 +320,21 @@ function generateMonthlyReport() {
   var rawRange = rawSheet.getRange(2, 1, lastRow - 1, 11);
   var rawValues = rawRange.getValues();
   
+  // Determine report month and year dynamically based on first log record
+  var reportMonth = new Date().getMonth(); // Default to current month (0-11)
+  var reportYear = new Date().getFullYear(); // Default to current year
+  
+  if (rawValues.length > 0 && rawValues[0][0]) {
+    var firstLogDate = new Date(rawValues[0][0]);
+    if (!isNaN(firstLogDate.getTime())) {
+      reportMonth = firstLogDate.getMonth();
+      reportYear = firstLogDate.getFullYear();
+    }
+  }
+  
+  // Calculate total days dynamically for this exact month (28, 29, 30, or 31)
+  var numDaysInMonth = new Date(reportYear, reportMonth + 1, 0).getDate();
+  
   // Group logs by Employee and Day of the month
   var employees = {};
   
@@ -325,19 +350,19 @@ function generateMonthlyReport() {
     if (!empId || empId === "N/A" || empId === "Employee ID" || empId === "undefined") continue;
     
     var day = getDayFromDate(dateCell);
-    if (!day || day < 1 || day > 31) continue;
+    if (!day || day < 1 || day > numDaysInMonth) continue;
     
     if (!employees[empId]) {
       employees[empId] = {
         empId: empId,
         name: name,
         designation: designation,
-        days: {} // Day 1 to 31 grid
+        days: {} // Day 1 to N calendar grid
       };
       
-      // Seed days grid with default empty values
-      for (var d = 1; d <= 31; d++) {
-        employees[empId].days[d] = { checkIn: "—", checkOut: "—", status: "" };
+      // Seed days grid with default 'A' (Absent) values
+      for (var d = 1; d <= numDaysInMonth; d++) {
+        employees[empId].days[d] = { checkIn: "—", checkOut: "—", status: "A" };
       }
     }
     
@@ -359,7 +384,7 @@ function generateMonthlyReport() {
       if (dayData.status !== "F") dayData.status = "P"; // Marked Present
     } else if (type === "CHECK OUT (AUTO)") {
       dayData.checkOut = timeStr;
-      dayData.status = "F"; // Auto check out triggered
+      dayData.status = "F"; // Auto check out / Forgot check out
     }
   }
   
@@ -367,8 +392,9 @@ function generateMonthlyReport() {
   var headersRow1 = ["Employee ID", "Name", "Designation"];
   var headersRow2 = ["", "", ""];
   
-  for (var d = 1; d <= 31; d++) {
-    headersRow1.push("Day " + d, "", ""); // Merged Day span
+  for (var d = 1; d <= numDaysInMonth; d++) {
+    var dateHeader = formatGridDate(d, reportMonth, reportYear);
+    headersRow1.push(dateHeader, "", ""); // Merged Date Header (dd/MM/yyyy)
     headersRow2.push("In", "Out", "Status");
   }
   
@@ -376,7 +402,7 @@ function generateMonthlyReport() {
   reportSheet.appendRow(headersRow2);
   
   // Merge Day headers in Row 1 horizontally across 3 columns
-  for (var d = 1; d <= 31; d++) {
+  for (var d = 1; d <= numDaysInMonth; d++) {
     var startCol = 4 + (d - 1) * 3;
     reportSheet.getRange(1, startCol, 1, 3).merge();
   }
@@ -394,7 +420,7 @@ function generateMonthlyReport() {
     var emp = employees[employeeIds[k]];
     var rowData = [emp.empId, emp.name, emp.designation];
     
-    for (var d = 1; d <= 31; d++) {
+    for (var d = 1; d <= numDaysInMonth; d++) {
       var dayGrid = emp.days[d];
       rowData.push(dayGrid.checkIn, dayGrid.checkOut, dayGrid.status);
     }
@@ -402,11 +428,11 @@ function generateMonthlyReport() {
   }
   
   if (rowDataList.length > 0) {
-    reportSheet.getRange(3, 1, rowDataList.length, 3 + 31 * 3).setValues(rowDataList);
+    reportSheet.getRange(3, 1, rowDataList.length, 3 + numDaysInMonth * 3).setValues(rowDataList);
   }
   
   // --- Styling and Premium Formatting ---
-  var totalCols = 3 + 31 * 3;
+  var totalCols = 3 + numDaysInMonth * 3;
   var totalRows = reportSheet.getLastRow();
   
   // Primary header row colors (Royal Blue)
@@ -434,7 +460,7 @@ function generateMonthlyReport() {
   // Resize columns
   reportSheet.autoResizeColumns(1, 3);
   for (var col = 4; col <= totalCols; col++) {
-    reportSheet.setColumnWidth(col, 65); // standard compact width
+    reportSheet.setColumnWidth(col, 68); // standard compact width for timestamps & status
   }
   
   // --- Automatic Conditional Rules Formatting ---
@@ -457,10 +483,20 @@ function generateMonthlyReport() {
       .setFontWeight("bold")
       .setRanges([statusRange])
       .build();
+
+  // 'A' (Absent) -> Soft Muted Gray Background
+  var ruleA = SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo("A")
+      .setBackground("#f1f3f4")
+      .setFontColor("#5f6368")
+      .setFontWeight("bold")
+      .setRanges([statusRange])
+      .build();
       
   var rules = reportSheet.getConditionalFormatRules();
   rules.push(ruleP);
   rules.push(ruleF);
+  rules.push(ruleA);
   reportSheet.setConditionalFormatRules(rules);
   
   SpreadsheetApp.getUi().alert("Success: Monthly Attendance Grid Report Register generated successfully!");
