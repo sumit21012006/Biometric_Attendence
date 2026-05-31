@@ -398,6 +398,10 @@ function generateMonthlyReport() {
     headersRow2.push("In", "Out", "Status");
   }
   
+  // Append Total Present Days & Total Absent Days columns
+  headersRow1.push("Total Present Days", "Total Absent Days");
+  headersRow2.push("", "");
+  
   reportSheet.appendRow(headersRow1);
   reportSheet.appendRow(headersRow2);
   
@@ -412,6 +416,12 @@ function generateMonthlyReport() {
   reportSheet.getRange("B1:B2").merge();
   reportSheet.getRange("C1:C2").merge();
   
+  // Merge Total Present Days & Total Absent Days headers vertically
+  var totalPresentCol = 3 + numDaysInMonth * 3 + 1;
+  var totalAbsentCol = 3 + numDaysInMonth * 3 + 2;
+  reportSheet.getRange(1, totalPresentCol, 2, 1).merge();
+  reportSheet.getRange(1, totalAbsentCol, 2, 1).merge();
+  
   // Populate grid with employee data rows
   var employeeIds = Object.keys(employees);
   var rowDataList = [];
@@ -420,19 +430,30 @@ function generateMonthlyReport() {
     var emp = employees[employeeIds[k]];
     var rowData = [emp.empId, emp.name, emp.designation];
     
+    var presentCount = 0;
+    var absentCount = 0;
+    
     for (var d = 1; d <= numDaysInMonth; d++) {
       var dayGrid = emp.days[d];
       rowData.push(dayGrid.checkIn, dayGrid.checkOut, dayGrid.status);
+      
+      if (dayGrid.status === "P" || dayGrid.status === "F") {
+        presentCount++;
+      } else if (dayGrid.status === "A") {
+        absentCount++;
+      }
     }
+    
+    rowData.push(presentCount, absentCount);
     rowDataList.push(rowData);
   }
   
   if (rowDataList.length > 0) {
-    reportSheet.getRange(3, 1, rowDataList.length, 3 + numDaysInMonth * 3).setValues(rowDataList);
+    reportSheet.getRange(3, 1, rowDataList.length, 3 + numDaysInMonth * 3 + 2).setValues(rowDataList);
   }
   
   // --- Styling and Premium Formatting ---
-  var totalCols = 3 + numDaysInMonth * 3;
+  var totalCols = 3 + numDaysInMonth * 3 + 2;
   var totalRows = reportSheet.getLastRow();
   
   // Primary header row colors (Royal Blue)
@@ -451,7 +472,7 @@ function generateMonthlyReport() {
   
   // Alignment settings
   reportSheet.getRange(3, 1, totalRows - 2, 3).setHorizontalAlignment("left"); // Info columns
-  reportSheet.getRange(3, 4, totalRows - 2, totalCols - 3).setHorizontalAlignment("center"); // Timing columns
+  reportSheet.getRange(3, 4, totalRows - 2, totalCols - 3).setHorizontalAlignment("center"); // Timing columns + counts
   
   // Freeze Headers and employee details columns for high-fidelity scroll experience
   reportSheet.setFrozenRows(2);
@@ -459,9 +480,11 @@ function generateMonthlyReport() {
   
   // Resize columns
   reportSheet.autoResizeColumns(1, 3);
-  for (var col = 4; col <= totalCols; col++) {
+  for (var col = 4; col <= totalCols - 2; col++) {
     reportSheet.setColumnWidth(col, 68); // standard compact width for timestamps & status
   }
+  reportSheet.setColumnWidth(totalCols - 1, 120); // Total Present Days column width
+  reportSheet.setColumnWidth(totalCols, 120);     // Total Absent Days column width
   
   // --- Automatic Conditional Rules Formatting ---
   var statusRange = reportSheet.getRange(3, 1, totalRows - 2, totalCols);
