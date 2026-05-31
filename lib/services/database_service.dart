@@ -81,12 +81,13 @@ class DatabaseService {
     return _firestore
         .collection('attendance')
         .where('uid', isEqualTo: uid)
-        .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
+      final records = snapshot.docs
           .map((doc) => AttendanceRecord.fromMap(doc.data(), doc.id))
           .toList();
+      records.sort((a, b) => b.timestamp.compareTo(a.timestamp)); // Sort descending in-memory
+      return records;
     });
   }
 
