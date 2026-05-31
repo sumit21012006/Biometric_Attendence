@@ -58,11 +58,16 @@ class DatabaseService {
       final snapshot = await _firestore
           .collection('attendance')
           .where('uid', isEqualTo: uid)
-          .orderBy('timestamp', descending: true)
-          .limit(1)
           .get();
       if (snapshot.docs.isNotEmpty) {
-        return AttendanceRecord.fromMap(snapshot.docs.first.data(), snapshot.docs.first.id);
+        final docs = List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(snapshot.docs);
+        docs.sort((a, b) {
+          final aTime = a.data()['timestamp'] as Timestamp?;
+          final bTime = b.data()['timestamp'] as Timestamp?;
+          if (aTime == null || bTime == null) return 0;
+          return bTime.compareTo(aTime); // Descending order (latest first)
+        });
+        return AttendanceRecord.fromMap(docs.first.data(), docs.first.id);
       }
       return null;
     } catch (e) {
