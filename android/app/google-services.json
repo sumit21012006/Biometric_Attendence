@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "943010912638",
+    "project_id": "biometric-attendance-518df",
+    "storage_bucket": "biometric-attendance-518df.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:943010912638:android:45854e2d38a373c0f8bb2f",
+        "android_client_info": {
+          "package_name": "com.company.biometric"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "943010912638-p8ks99hq9757i2affrk1e7vntohbig3h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.company.biometric",
+            "certificate_hash": "61566b24c8d662aa81e838289c450de04b86e47f"
+          }
+        },
+        {
+          "client_id": "943010912638-mevn797vtvd2air2bbq7nna4gaboomda.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAoV1B_vr2zj37P9TA-flcGqGE_LMlK2gI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "943010912638-mevn797vtvd2air2bbq7nna4gaboomda.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "943010912638-8upmiv026pu5q92re03n37r4gfsfmeoe.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.company.biometric"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
