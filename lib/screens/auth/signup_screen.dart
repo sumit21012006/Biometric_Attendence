@@ -14,12 +14,32 @@ class SignupScreen extends StatefulWidget {
 
 class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _designationController = TextEditingController();
+  final _nameController = TextEditingController();
   final _employeeIdController = TextEditingController();
+  String? _selectedDesignation;
+
+  // Curated list of official job designations
+  final List<String> _designations = [
+    'Head Master',
+    'Clerk',
+    'Primary Teacher',
+    'Secondary Teacher',
+    'Non teaching staff',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Proactively seed the name textfield from Google Authentication display metadata
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      _nameController.text = auth.tempGoogleUser?.displayName ?? '';
+    });
+  }
 
   @override
   void dispose() {
-    _designationController.dispose();
+    _nameController.dispose();
     _employeeIdController.dispose();
     super.dispose();
   }
@@ -32,7 +52,7 @@ class _SignupScreenState extends State<SignupScreen> {
       backgroundColor: AppConstants.background,
       body: Stack(
         children: [
-          // Ambient lighting
+          // Ambient lighting background glow
           Positioned(
             top: -50,
             right: -50,
@@ -55,8 +75,8 @@ class _SignupScreenState extends State<SignupScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Header
-                      Icon(
+                      // Header Branding
+                      const Icon(
                         Icons.assignment_ind_rounded,
                         size: 70,
                         color: AppConstants.secondary,
@@ -73,7 +93,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Welcome, ${auth.tempGoogleUser?.displayName ?? "Employee"}! Please submit your details below to bind this device to your employee account.',
+                        'Welcome! Please submit your details below to bind this device to your employee account.',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: AppConstants.textSecondary,
@@ -83,11 +103,52 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       const SizedBox(height: 36),
 
-                      // Form card
+                      // Form input container card
                       GlassCard(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            // Custom Input field: Employee Name
+                            const Text(
+                              'Full Name',
+                              style: TextStyle(
+                                color: AppConstants.textSecondary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _nameController,
+                              style: const TextStyle(color: AppConstants.textPrimary),
+                              decoration: InputDecoration(
+                                hintText: 'Enter your full name',
+                                hintStyle: const TextStyle(color: AppConstants.textSecondary),
+                                prefixIcon: const Icon(Icons.person, color: AppConstants.primary),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: AppConstants.primary),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white.withOpacity(0.02),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter your name';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 20),
+
                             // Custom Input field: Employee ID
                             const Text(
                               'Employee ID / Code',
@@ -129,7 +190,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             ),
                             const SizedBox(height: 20),
 
-                            // Custom Input field: Designation
+                            // Custom Dropdown field: Designation
                             const Text(
                               'Job Designation',
                               style: TextStyle(
@@ -139,11 +200,12 @@ class _SignupScreenState extends State<SignupScreen> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            TextFormField(
-                              controller: _designationController,
+                            DropdownButtonFormField<String>(
+                              value: _selectedDesignation,
+                              dropdownColor: AppConstants.cardBg,
                               style: const TextStyle(color: AppConstants.textPrimary),
                               decoration: InputDecoration(
-                                hintText: 'e.g. Marketing Manager',
+                                hintText: 'Select Designation',
                                 hintStyle: const TextStyle(color: AppConstants.textSecondary),
                                 prefixIcon: const Icon(Icons.work, color: AppConstants.primary),
                                 border: OutlineInputBorder(
@@ -161,9 +223,23 @@ class _SignupScreenState extends State<SignupScreen> {
                                 filled: true,
                                 fillColor: Colors.white.withOpacity(0.02),
                               ),
+                              items: _designations.map((designation) {
+                                return DropdownMenuItem<String>(
+                                  value: designation,
+                                  child: Text(
+                                    designation,
+                                    style: const TextStyle(color: AppConstants.textPrimary),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedDesignation = value;
+                                });
+                              },
                               validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Please enter your designation';
+                                if (value == null || value.isEmpty) {
+                                  return 'Please select your designation';
                                 }
                                 return null;
                               },
@@ -177,10 +253,11 @@ class _SignupScreenState extends State<SignupScreen> {
                               gradient: AppConstants.secondaryGradient,
                               isLoading: auth.isLoading,
                               onPressed: () async {
-                                if (_formKey.currentState!.validate()) {
+                                if (_formKey.currentState!.validate() && _selectedDesignation != null) {
                                   try {
                                     await auth.signUpEmployee(
-                                      designation: _designationController.text.trim(),
+                                      name: _nameController.text.trim(),
+                                      designation: _selectedDesignation!,
                                       employeeId: _employeeIdController.text.trim(),
                                     );
                                   } catch (e) {

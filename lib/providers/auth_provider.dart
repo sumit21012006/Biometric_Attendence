@@ -149,6 +149,7 @@ class AuthProvider extends ChangeNotifier {
 
   // Register a new employee user
   Future<void> signUpEmployee({
+    required String name,
     required String designation,
     required String employeeId,
   }) async {
@@ -162,7 +163,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final newUser = UserModel(
         uid: _tempGoogleUser!.uid,
-        name: _tempGoogleUser!.displayName ?? 'Employee',
+        name: name,
         email: _tempGoogleUser!.email ?? '',
         designation: designation,
         employeeId: employeeId,
