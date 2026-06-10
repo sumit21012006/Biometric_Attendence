@@ -28,11 +28,28 @@ class SheetsService {
 
       print('Sheets Service: Sending payload to $webAppUrl');
       
-      final response = await http.post(
-        Uri.parse(webAppUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(payload),
-      );
+      final client = http.Client();
+      final request = http.Request('POST', Uri.parse(webAppUrl))
+        ..headers['Content-Type'] = 'application/json'
+        ..body = jsonEncode(payload);
+      request.followRedirects = false;
+
+      final streamedResponse = await client.send(request);
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 302) {
+        final redirectUrl = response.headers['location'];
+        if (redirectUrl != null) {
+          print('Sheets Service: Following POST redirect to $redirectUrl');
+          response = await http.post(
+            Uri.parse(redirectUrl),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(payload),
+          );
+        }
+      }
+      
+      client.close();
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseBody = jsonDecode(response.body);

@@ -1,9 +1,16 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
 import 'package:biometric/config/constants.dart';
 import 'package:biometric/models/attendance_record.dart';
 import 'package:biometric/services/database_service.dart';
+import 'package:biometric/providers/location_provider.dart';
 import 'package:biometric/screens/widgets/glass_card.dart';
+import 'package:biometric/screens/widgets/premium_button.dart';
+import 'package:biometric/screens/widgets/error_dialog.dart';
 
 class LogsManagementScreen extends StatefulWidget {
   const LogsManagementScreen({Key? key}) : super(key: key);
@@ -16,6 +23,73 @@ class _LogsManagementScreenState extends State<LogsManagementScreen> {
   final DatabaseService _dbService = DatabaseService();
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+  bool _isExporting = false;
+
+  Future<void> _exportExcelReport(BuildContext context) async {
+    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+    final sheetsUrl = locationProvider.officeConfig?.googleSheetsUrl ?? '';
+
+    if (sheetsUrl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please configure the Google Sheets Web App URL in settings first.'),
+          backgroundColor: AppConstants.warning,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isExporting = true);
+
+    try {
+      final requestUrl = '$sheetsUrl?action=export';
+      print('LogsManagementScreen: Requesting URL: $requestUrl');
+      final response = await http.get(Uri.parse(requestUrl));
+      
+      print('LogsManagementScreen: Response Code: ${response.statusCode}');
+      print('LogsManagementScreen: Response Body Preview: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['result'] == 'success') {
+          final downloadUrl = data['url'];
+          
+          if (await canLaunchUrl(Uri.parse(downloadUrl))) {
+            await launchUrl(
+              Uri.parse(downloadUrl),
+              mode: LaunchMode.externalApplication,
+            );
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Horizontal Excel Report generated and download started.'),
+                  backgroundColor: AppConstants.success,
+                ),
+              );
+            }
+          } else {
+            throw 'Could not launch browser download link: $downloadUrl';
+          }
+        } else {
+          throw data['error'] ?? 'Spreadsheet script error';
+        }
+      } else {
+        throw 'HTTP server returned code ${response.statusCode}';
+      }
+    } catch (e) {
+      if (mounted) {
+        showErrorDialog(
+          context,
+          'Excel Export Failed',
+          e.toString(),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -60,6 +134,18 @@ class _LogsManagementScreenState extends State<LogsManagementScreen> {
                 _searchQuery = value.toLowerCase().trim();
               });
             },
+          ),
+        ),
+
+        // Export Excel Button (Available for admins to download the horizontal register)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 12.0),
+          child: PremiumButton(
+            text: 'Download Monthly Register',
+            icon: Icons.table_view_rounded,
+            gradient: AppConstants.secondaryGradient,
+            isLoading: _isExporting,
+            onPressed: () => _exportExcelReport(context),
           ),
         ),
 
@@ -268,14 +354,18 @@ class _LogsManagementScreenState extends State<LogsManagementScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                'Hardware: ${log.deviceId}',
-                                style: const TextStyle(
-                                  color: Colors.white10,
-                                  fontSize: 8.5,
-                                  fontFamily: 'monospace',
+                              Expanded(
+                                child: Text(
+                                  'Hardware: ${log.deviceId}',
+                                  style: const TextStyle(
+                                    color: Colors.white10,
+                                    fontSize: 8.5,
+                                    fontFamily: 'monospace',
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                              const SizedBox(width: 10),
                               Text(
                                 'GPS: ${log.latitude.toStringAsFixed(4)}, ${log.longitude.toStringAsFixed(4)}',
                                 style: const TextStyle(

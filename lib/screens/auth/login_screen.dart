@@ -5,6 +5,9 @@ import 'package:biometric/providers/auth_provider.dart';
 import 'package:biometric/screens/auth/signup_screen.dart';
 import 'package:biometric/screens/widgets/glass_card.dart';
 import 'package:biometric/screens/widgets/premium_button.dart';
+import 'package:biometric/screens/widgets/school_banner.dart';
+import 'package:biometric/screens/widgets/developer_attribution.dart';
+import 'package:biometric/screens/widgets/error_dialog.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -61,36 +64,9 @@ class LoginScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Branding Header
-                        Center(
-                          child: Icon(
-                            Icons.fingerprint_rounded,
-                            size: 80,
-                            color: AppConstants.primary,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        const Text(
-                          AppConstants.appName,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: AppConstants.textPrimary,
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Secure Employee Identity & Geofence Logs',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: AppConstants.textSecondary,
-                            fontSize: 15,
-                            fontWeight: FontWeight.normal,
-                          ),
-                        ),
-                        const SizedBox(height: 48),
+                        // School Branding Banner
+                        const SchoolBanner(vertical: true),
+                        const SizedBox(height: 32),
 
                         // Login Form Container
                         GlassCard(
@@ -174,11 +150,10 @@ class LoginScreen extends StatelessWidget {
                                     try {
                                       await auth.signInWithGoogle();
                                     } catch (e) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('Authentication Failed: ${e.toString()}'),
-                                          backgroundColor: AppConstants.error,
-                                        ),
+                                      showErrorDialog(
+                                        context,
+                                        'Authentication Failed',
+                                        e.toString(),
                                       );
                                     }
                                   },
@@ -188,7 +163,7 @@ class LoginScreen extends StatelessWidget {
                           ),
                         ),
                         
-                        const SizedBox(height: 48),
+                        const SizedBox(height: 32),
                         Text(
                           'Current Device: ${auth.currentDeviceId ?? "Fetching..."}',
                           textAlign: TextAlign.center,
@@ -197,6 +172,8 @@ class LoginScreen extends StatelessWidget {
                             fontSize: 11,
                           ),
                         ),
+                        const SizedBox(height: 12),
+                        const DeveloperAttribution(compact: true),
                       ],
                     );
                   },

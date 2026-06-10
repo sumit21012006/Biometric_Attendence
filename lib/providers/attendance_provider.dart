@@ -45,22 +45,28 @@ class AttendanceProvider extends ChangeNotifier {
       notifyListeners();
       
       final AttendanceRecord? lastRecord = await _dbService.getLastAttendanceRecord(currentUser.uid);
+      final DateTime now = DateTime.now();
+      final bool isLastRecordToday = lastRecord != null &&
+          lastRecord.timestamp.year == now.year &&
+          lastRecord.timestamp.month == now.month &&
+          lastRecord.timestamp.day == now.day;
+
       if (type == 'check_in') {
-        if (lastRecord != null && lastRecord.type == 'check_in') {
-          _statusMessage = 'Security block: You are already checked in. Please check out first.';
+        if (isLastRecordToday) {
+          _statusMessage = 'Security block: You have already checked in today. Multiple check-ins are not allowed.';
           _isProcessing = false;
           notifyListeners();
           return false;
         }
       } else if (type == 'check_out') {
-        if (lastRecord == null) {
-          _statusMessage = 'Security block: No check-in record found. Please check in first.';
+        if (!isLastRecordToday) {
+          _statusMessage = 'Security block: No check-in record found for today. Please check in first.';
           _isProcessing = false;
           notifyListeners();
           return false;
         }
         if (lastRecord.type == 'check_out') {
-          _statusMessage = 'Security block: You are already checked out. Please check in first.';
+          _statusMessage = 'Security block: You have already checked out today. Multiple check-outs are not allowed.';
           _isProcessing = false;
           notifyListeners();
           return false;

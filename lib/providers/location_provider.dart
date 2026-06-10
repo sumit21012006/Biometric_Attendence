@@ -41,6 +41,7 @@ class LocationProvider extends ChangeNotifier {
           longitude: AppConstants.defaultOfficeLongitude,
           radius: AppConstants.defaultOfficeRadius,
           googleSheetsUrl: '',
+          adminEmails: AppConstants.defaultAdminEmails,
         );
         await _dbService.saveOfficeConfig(defaultConfig);
         _officeConfig = defaultConfig;
@@ -110,9 +111,11 @@ class LocationProvider extends ChangeNotifier {
       }
 
       // 3. Retrieve high-accuracy location coordinates
+      // 3. Retrieve fresh high-accuracy location coordinates
+      // Strictly enforced to prevent attendance fraud (spoofing via stale location cache).
       final Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
+        timeLimit: const Duration(seconds: 25),
       );
 
       _currentPosition = position;
@@ -134,7 +137,7 @@ class LocationProvider extends ChangeNotifier {
       );
 
       _isWithinRange = _distanceFromOffice <= allowedRadius;
-      print('Location Provider: Dist: $_distanceFromOffice, Within Range: $_isWithinRange');
+      print('Location Provider: Lat: ${position.latitude.toStringAsFixed(6)}, Lng: ${position.longitude.toStringAsFixed(6)}, Accuracy: ±${position.accuracy.toStringAsFixed(1)}m, Dist: ${_distanceFromOffice.toStringAsFixed(1)}m, Within Range: $_isWithinRange');
       
       _isLoading = false;
       notifyListeners();

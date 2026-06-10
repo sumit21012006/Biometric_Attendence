@@ -3,6 +3,7 @@ import 'package:biometric/config/constants.dart';
 import 'package:biometric/models/user_model.dart';
 import 'package:biometric/services/database_service.dart';
 import 'package:biometric/screens/widgets/glass_card.dart';
+import 'package:biometric/screens/widgets/marquee_text.dart';
 
 class DeviceManagementScreen extends StatefulWidget {
   const DeviceManagementScreen({Key? key}) : super(key: key);
@@ -129,12 +130,14 @@ class _DeviceManagementScreenState extends State<DeviceManagementScreen> {
                               children: [
                                 Row(
                                   children: [
-                                    Text(
-                                      emp.name,
-                                      style: const TextStyle(
-                                        color: AppConstants.textPrimary,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                                    Expanded(
+                                      child: MarqueeText(
+                                        text: emp.name,
+                                        style: const TextStyle(
+                                          color: AppConstants.textPrimary,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(width: 8),

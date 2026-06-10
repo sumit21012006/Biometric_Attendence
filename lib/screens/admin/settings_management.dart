@@ -20,7 +20,9 @@ class _SettingsManagementScreenState extends State<SettingsManagementScreen> {
   final _longitudeController = TextEditingController();
   final _radiusController = TextEditingController();
   final _sheetsUrlController = TextEditingController();
+  final _newEmailController = TextEditingController();
 
+  final List<String> _adminEmails = [];
   bool _isLocatingCurrent = false;
 
   @override
@@ -39,6 +41,10 @@ class _SettingsManagementScreenState extends State<SettingsManagementScreen> {
     _longitudeController.text = config.longitude.toString();
     _radiusController.text = config.radius.toString();
     _sheetsUrlController.text = config.googleSheetsUrl;
+    setState(() {
+      _adminEmails.clear();
+      _adminEmails.addAll(config.adminEmails);
+    });
   }
 
   @override
@@ -47,6 +53,7 @@ class _SettingsManagementScreenState extends State<SettingsManagementScreen> {
     _longitudeController.dispose();
     _radiusController.dispose();
     _sheetsUrlController.dispose();
+    _newEmailController.dispose();
     super.dispose();
   }
 
@@ -200,6 +207,159 @@ class _SettingsManagementScreenState extends State<SettingsManagementScreen> {
                     },
                   ),
                   
+                  const Divider(color: Colors.white12, height: 32),
+
+                  // Admin Access Emails Section
+                  Row(
+                    children: const [
+                      Icon(Icons.admin_panel_settings, color: AppConstants.primary, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'Admin Access Emails',
+                        style: TextStyle(color: AppConstants.textPrimary, fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Designate email addresses that have administrative console privileges. These users will bypass device-binding constraints.',
+                    style: TextStyle(
+                      color: AppConstants.textSecondary,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Add New Email Row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _newEmailController,
+                          style: const TextStyle(color: AppConstants.textPrimary, fontSize: 13),
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: _inputDecoration('e.g. admin@school.com'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppConstants.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        ),
+                        onPressed: () {
+                          final email = _newEmailController.text.trim();
+                          if (email.isNotEmpty) {
+                            if (!email.contains('@')) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Please enter a valid email address.'),
+                                  backgroundColor: AppConstants.error,
+                                ),
+                              );
+                              return;
+                            }
+                            if (_adminEmails.any((e) => e.toLowerCase() == email.toLowerCase())) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Email is already in the list.'),
+                                  backgroundColor: AppConstants.warning,
+                                ),
+                              );
+                              return;
+                            }
+                            setState(() {
+                              _adminEmails.add(email);
+                              _newEmailController.clear();
+                            });
+                          }
+                        },
+                        child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Admin Emails List container
+                  if (_adminEmails.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.01),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.05)),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'No admin emails designated yet.',
+                          style: TextStyle(color: AppConstants.textSecondary, fontSize: 12, fontStyle: FontStyle.italic),
+                        ),
+                      ),
+                    )
+                  else
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 200),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.01),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.05)),
+                        ),
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          physics: const ClampingScrollPhysics(),
+                          itemCount: _adminEmails.length,
+                          separatorBuilder: (context, index) => const Divider(color: Colors.white12, height: 1),
+                          itemBuilder: (context, index) {
+                            final email = _adminEmails[index];
+                            final isSuperAdmin = email.trim().toLowerCase() == 'sumit.m2106@gmail.com';
+                            
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.mail_outline, size: 16, color: AppConstants.textSecondary),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      email,
+                                      style: const TextStyle(color: AppConstants.textPrimary, fontSize: 13),
+                                    ),
+                                  ),
+                                  if (isSuperAdmin)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppConstants.primary.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Text(
+                                        'Owner',
+                                        style: TextStyle(color: AppConstants.primary, fontSize: 10, fontWeight: FontWeight.bold),
+                                      ),
+                                    )
+                                  else
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline, color: AppConstants.error, size: 18),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      onPressed: () {
+                                        setState(() {
+                                          _adminEmails.removeAt(index);
+                                        });
+                                      },
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  
                   const SizedBox(height: 32),
 
                   // Save configuration button
@@ -215,6 +375,7 @@ class _SettingsManagementScreenState extends State<SettingsManagementScreen> {
                           longitude: double.parse(_longitudeController.text),
                           radius: double.parse(_radiusController.text),
                           googleSheetsUrl: _sheetsUrlController.text.trim(),
+                          adminEmails: _adminEmails,
                         );
                         
                         try {

@@ -46,9 +46,9 @@ class AttendanceRecord {
           : DateTime.now(),
       type: map['type'] ?? 'check_in',
       deviceId: map['deviceId'] ?? '',
-      latitude: (map['latitude'] ?? 0.0) as double,
-      longitude: (map['longitude'] ?? 0.0) as double,
-      distance: (map['distance'] ?? 0.0) as double,
+      latitude: (map['latitude'] as num? ?? 0.0).toDouble(),
+      longitude: (map['longitude'] as num? ?? 0.0).toDouble(),
+      distance: (map['distance'] as num? ?? 0.0).toDouble(),
       verified: map['verified'] ?? false,
       isAutoCheckout: map['isAutoCheckout'] ?? false,
     );

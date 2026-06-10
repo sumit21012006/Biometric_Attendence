@@ -5,20 +5,23 @@ class OfficeConfig {
   final double longitude;
   final double radius; // in meters
   final String googleSheetsUrl;
+  final List<String> adminEmails;
 
   OfficeConfig({
     required this.latitude,
     required this.longitude,
     required this.radius,
     required this.googleSheetsUrl,
+    required this.adminEmails,
   });
 
   factory OfficeConfig.fromMap(Map<String, dynamic> map) {
     return OfficeConfig(
-      latitude: (map['latitude'] ?? AppConstants.defaultOfficeLatitude) as double,
-      longitude: (map['longitude'] ?? AppConstants.defaultOfficeLongitude) as double,
-      radius: (map['radius'] ?? AppConstants.defaultOfficeRadius) as double,
+      latitude: (map['latitude'] as num? ?? AppConstants.defaultOfficeLatitude).toDouble(),
+      longitude: (map['longitude'] as num? ?? AppConstants.defaultOfficeLongitude).toDouble(),
+      radius: (map['radius'] as num? ?? AppConstants.defaultOfficeRadius).toDouble(),
       googleSheetsUrl: map['googleSheetsUrl'] ?? '',
+      adminEmails: List<String>.from(map['adminEmails'] ?? []),
     );
   }
 
@@ -28,6 +31,7 @@ class OfficeConfig {
       'longitude': longitude,
       'radius': radius,
       'googleSheetsUrl': googleSheetsUrl,
+      'adminEmails': adminEmails,
     };
   }
 
@@ -36,12 +40,14 @@ class OfficeConfig {
     double? longitude,
     double? radius,
     String? googleSheetsUrl,
+    List<String>? adminEmails,
   }) {
     return OfficeConfig(
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       radius: radius ?? this.radius,
       googleSheetsUrl: googleSheetsUrl ?? this.googleSheetsUrl,
+      adminEmails: adminEmails ?? this.adminEmails,
     );
   }
 }

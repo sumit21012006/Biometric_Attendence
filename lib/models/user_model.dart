@@ -9,6 +9,9 @@ class UserModel {
   final String? deviceId; // Uniquely binds employee to this device
   final String role;      // 'employee' or 'admin'
   final DateTime createdAt;
+  final String? sevarthId;
+  final String? aadhaarNumber;
+  final DateTime? joiningDate;
 
   UserModel({
     required this.uid,
@@ -19,6 +22,9 @@ class UserModel {
     this.deviceId,
     required this.role,
     required this.createdAt,
+    this.sevarthId,
+    this.aadhaarNumber,
+    this.joiningDate,
   });
 
   // Factory constructor to create UserModel from Firestore document
@@ -34,6 +40,11 @@ class UserModel {
       createdAt: map['createdAt'] != null
           ? (map['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
+      sevarthId: map['sevarthId'],
+      aadhaarNumber: map['aadhaarNumber'],
+      joiningDate: map['joiningDate'] != null
+          ? (map['joiningDate'] as Timestamp).toDate()
+          : null,
     );
   }
 
@@ -47,6 +58,9 @@ class UserModel {
       'deviceId': deviceId,
       'role': role,
       'createdAt': Timestamp.fromDate(createdAt),
+      'sevarthId': sevarthId,
+      'aadhaarNumber': aadhaarNumber,
+      'joiningDate': joiningDate != null ? Timestamp.fromDate(joiningDate!) : null,
     };
   }
 
@@ -60,6 +74,9 @@ class UserModel {
     String? deviceId,
     String? role,
     DateTime? createdAt,
+    String? sevarthId,
+    String? aadhaarNumber,
+    DateTime? joiningDate,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -70,6 +87,9 @@ class UserModel {
       deviceId: deviceId, // Direct assignment allows setting to null
       role: role ?? this.role,
       createdAt: createdAt ?? this.createdAt,
+      sevarthId: sevarthId ?? this.sevarthId,
+      aadhaarNumber: aadhaarNumber ?? this.aadhaarNumber,
+      joiningDate: joiningDate ?? this.joiningDate,
     );
   }
 }

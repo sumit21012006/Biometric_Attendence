@@ -64,13 +64,17 @@ class PremiumButton extends StatelessWidget {
                         Icon(icon, color: isEnabled ? Colors.white : Colors.grey, size: 20),
                         const SizedBox(width: 10),
                       ],
-                      Text(
-                        text,
-                        style: TextStyle(
-                          color: isEnabled ? Colors.white : Colors.grey,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.8,
+                      Flexible(
+                        child: Text(
+                          text,
+                          style: TextStyle(
+                            color: isEnabled ? Colors.white : Colors.grey,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],

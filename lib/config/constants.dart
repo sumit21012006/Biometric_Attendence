@@ -46,6 +46,15 @@ class AppConstants {
   static const double defaultOfficeLongitude = 77.2090;
   static const double defaultOfficeRadius = 100.0;      // In meters
 
+  // Default Admin Emails
+  static const List<String> defaultAdminEmails = [
+    'sumit.m2106@gmail.com',
+    'admin@example.com',
+  ];
+
+  // Web Client ID from google-services.json (OAuth client_type 3)
+  static const String webClientId = '943010912638-mevn797vtvd2air2bbq7nna4gaboomda.apps.googleusercontent.com';
+
   // Custom shadows
   static List<BoxShadow> premiumShadow = [
     BoxShadow(

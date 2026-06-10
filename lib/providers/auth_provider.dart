@@ -5,10 +5,13 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:biometric/models/user_model.dart';
 import 'package:biometric/services/database_service.dart';
+import 'package:biometric/config/constants.dart';
 
 class AuthProvider extends ChangeNotifier {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    serverClientId: AppConstants.webClientId,
+  );
   final DatabaseService _dbService = DatabaseService();
   final DeviceInfoPlugin _deviceInfo = DeviceInfoPlugin();
 
@@ -119,21 +122,59 @@ class AuthProvider extends ChangeNotifier {
       return;
     }
 
+    UserModel userToVerify = dbUser;
+
+    // Role synchronization based on admin access emails list
+    try {
+      final officeConfig = await _dbService.getOfficeConfig();
+      var adminEmails = officeConfig?.adminEmails ?? [];
+      if (adminEmails.isEmpty) {
+        adminEmails = AppConstants.defaultAdminEmails;
+      }
+      final email = firebaseUser.email ?? '';
+      final isDefaultAdmin = AppConstants.defaultAdminEmails.any((e) => e.trim().toLowerCase() == email.trim().toLowerCase());
+      final isAdminInConfig = isDefaultAdmin || adminEmails.any((e) => e.trim().toLowerCase() == email.trim().toLowerCase());
+
+      if (isAdminInConfig && userToVerify.role != 'admin') {
+        // Upgrade to admin
+        userToVerify = userToVerify.copyWith(
+          role: 'admin',
+          designation: 'Administrator',
+          employeeId: 'ADMIN',
+          deviceId: null,
+        );
+        await _dbService.createUser(userToVerify);
+        print('AuthProvider: Upgraded ${userToVerify.email} to Admin');
+      } else if (!isAdminInConfig && userToVerify.role == 'admin') {
+        // Downgrade to employee
+        userToVerify = userToVerify.copyWith(
+          role: 'employee',
+          designation: 'Secondary Teacher',
+          employeeId: 'EMP-${userToVerify.uid.substring(0, 4).toUpperCase()}',
+          deviceId: null, // Let them bind current device upon login
+        );
+        await _dbService.createUser(userToVerify);
+        print('AuthProvider: Downgraded ${userToVerify.email} to Employee');
+      }
+    } catch (e) {
+      print('AuthProvider: Role sync error: $e');
+    }
+
     // Existing user: check role and enforce device bindings
-    if (dbUser.role == 'admin') {
+    if (userToVerify.role == 'admin') {
       // Admins are unlocked (can access panels from any desktop/tablet)
-      _currentUser = dbUser;
+      _currentUser = userToVerify;
       _isDeviceLocked = false;
     } else {
       // Employee: verify device binding status
-      if (dbUser.deviceId == null) {
+      if (userToVerify.deviceId == null) {
         // Device is unbound (e.g. initial login or admin-reset). Bind it now!
         await _dbService.updateDeviceId(firebaseUser.uid, _currentDeviceId);
-        _currentUser = dbUser.copyWith(deviceId: _currentDeviceId);
+        _currentUser = userToVerify.copyWith(deviceId: _currentDeviceId);
         _isDeviceLocked = false;
-      } else if (dbUser.deviceId == _currentDeviceId) {
+      } else if (userToVerify.deviceId == _currentDeviceId) {
         // Device matched. Authenticate!
-        _currentUser = dbUser;
+        _currentUser = userToVerify;
         _isDeviceLocked = false;
       } else {
         // Device mismatch! Block access and force sign-out.
@@ -152,6 +193,9 @@ class AuthProvider extends ChangeNotifier {
     required String name,
     required String designation,
     required String employeeId,
+    String? sevarthId,
+    String? aadhaarNumber,
+    DateTime? joiningDate,
   }) async {
     if (_tempGoogleUser == null || _currentDeviceId == null) {
       throw Exception('Missing Google info or Device ID for registration.');
@@ -167,8 +211,47 @@ class AuthProvider extends ChangeNotifier {
         email: _tempGoogleUser!.email ?? '',
         designation: designation,
         employeeId: employeeId,
+        sevarthId: sevarthId,
+        aadhaarNumber: aadhaarNumber,
+        joiningDate: joiningDate,
         deviceId: _currentDeviceId, // Binds current hardware device ID
         role: 'employee',
+        createdAt: DateTime.now(),
+      );
+
+      await _dbService.createUser(newUser);
+      _currentUser = newUser;
+      _isSignupRequired = false;
+      _tempGoogleUser = null;
+    } catch (e) {
+      print('Sign up error: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Register a new admin user
+  Future<void> signUpAdmin({
+    required String name,
+  }) async {
+    if (_tempGoogleUser == null) {
+      throw Exception('Missing Google info for registration.');
+    }
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final newUser = UserModel(
+        uid: _tempGoogleUser!.uid,
+        name: name,
+        email: _tempGoogleUser!.email ?? '',
+        designation: 'Administrator',
+        employeeId: 'ADMIN',
+        deviceId: null, // Admins don't need a locked device ID
+        role: 'admin',
         createdAt: DateTime.now(),
       );
 
