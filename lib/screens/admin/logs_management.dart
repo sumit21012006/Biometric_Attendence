@@ -182,7 +182,7 @@ class _LogsManagementScreenState extends State<LogsManagementScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.assignment_turned_in_outlined, size: 64, color: AppConstants.textSecondary),
+                      const Icon(Icons.assignment_turned_in_outlined, size: 64, color: AppConstants.textSecondary),
                       const SizedBox(height: 16),
                       Text(
                         _searchQuery.isEmpty ? 'No Attendance Logs Found' : 'No Matching Logs',
@@ -281,8 +281,8 @@ class _LogsManagementScreenState extends State<LogsManagementScreen> {
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(color: AppConstants.error.withOpacity(0.2), width: 1),
                               ),
-                              child: Row(
-                                children: const [
+                              child: const Row(
+                                children: [
                                   Icon(Icons.warning_amber_rounded, color: AppConstants.error, size: 16),
                                   SizedBox(width: 8),
                                   Expanded(

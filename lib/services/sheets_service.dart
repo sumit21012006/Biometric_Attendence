@@ -24,6 +24,7 @@ class SheetsService {
         'longitude': record.longitude,
         'distance': record.distance,
         'verified': record.verified,
+        'schoolName': record.schoolName,
       };
 
       print('Sheets Service: Sending payload to $webAppUrl');

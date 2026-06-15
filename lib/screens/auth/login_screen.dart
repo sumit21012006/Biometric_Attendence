@@ -108,16 +108,18 @@ class LoginScreen extends StatelessWidget {
                                   ),
                                   child: Column(
                                     children: [
-                                      Row(
-                                        children: const [
+                                      const Row(
+                                        children: [
                                           Icon(Icons.warning_amber_rounded, color: AppConstants.error),
                                           SizedBox(width: 8),
-                                          Text(
-                                            'Device ID Mismatch!',
-                                            style: TextStyle(
-                                              color: AppConstants.error,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 15,
+                                          Expanded(
+                                            child: Text(
+                                              'Device ID Mismatch!',
+                                              style: TextStyle(
+                                                color: AppConstants.error,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                              ),
                                             ),
                                           ),
                                         ],

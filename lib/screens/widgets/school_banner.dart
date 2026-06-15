@@ -57,7 +57,7 @@ class SchoolBanner extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         MarqueeText(
-          text: 'जवाहर माध्यमिक आश्रम शाळा',
+          text: 'उ,बाद जिल्हा वसंतराव नाईक',
           style: TextStyle(
             color: Colors.amber[200], // Matched golden shade
             fontSize: compact ? 16.0 : (vertical ? 21.0 : 18.5),
@@ -68,10 +68,10 @@ class SchoolBanner extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         MarqueeText(
-          text: '         विद्यानगर (बावी) ता.जि.धाराशिव',
+          text: '    मा.स.से.मंडळ धाराशिव',
           style: TextStyle(
             color: Colors.amber[200],
-            fontSize: compact ? 11.5 : (vertical ? 14.0 : 13.0),
+            fontSize: compact ? 16: (vertical ? 14.0 : 13.0),
             fontWeight: FontWeight.bold,
             letterSpacing: 0.4,
           ),

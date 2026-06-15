@@ -95,7 +95,7 @@ class _DeviceManagementScreenState extends State<DeviceManagementScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.people_outline, size: 64, color: AppConstants.textSecondary),
+                      const Icon(Icons.people_outline, size: 64, color: AppConstants.textSecondary),
                       const SizedBox(height: 16),
                       Text(
                         _searchQuery.isEmpty ? 'No Employees Registered' : 'No Results Found',
@@ -172,6 +172,15 @@ class _DeviceManagementScreenState extends State<DeviceManagementScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
+                                  emp.schoolName ?? 'N/A',
+                                  style: const TextStyle(
+                                    color: AppConstants.primary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
                                   emp.email,
                                   style: const TextStyle(
                                     color: Colors.white30,
@@ -224,11 +233,13 @@ class _DeviceManagementScreenState extends State<DeviceManagementScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppConstants.cardBg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.warning_amber_rounded, color: AppConstants.accent, size: 28),
             SizedBox(width: 8),
-            Text('Reset Device Lock', style: TextStyle(color: Colors.white)),
+            Expanded(
+              child: Text('Reset Device Lock', style: TextStyle(color: Colors.white)),
+            ),
           ],
         ),
         content: Text(

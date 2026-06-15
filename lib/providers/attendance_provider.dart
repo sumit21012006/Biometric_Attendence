@@ -73,9 +73,20 @@ class AttendanceProvider extends ChangeNotifier {
         }
       }
 
-      // 1. Verify Device Lock Status
-      if (authProvider.isDeviceLocked) {
-        _statusMessage = 'Error: This device is not registered to your account.';
+      // 1. Verify Device Lock Status from Database (Real-time check)
+      _statusMessage = 'Verifying device binding...';
+      notifyListeners();
+
+      final UserModel? freshUser = await _dbService.getUser(currentUser.uid);
+      if (freshUser == null) {
+        _statusMessage = 'Error: User account record not found.';
+        _isProcessing = false;
+        notifyListeners();
+        return false;
+      }
+
+      if (freshUser.role != 'admin' && freshUser.deviceId != authProvider.currentDeviceId) {
+        _statusMessage = 'Security block: This device is not registered to your account.';
         _isProcessing = false;
         notifyListeners();
         return false;
@@ -136,6 +147,7 @@ class AttendanceProvider extends ChangeNotifier {
         longitude: lng,
         distance: distance,
         verified: true,
+        schoolName: currentUser.schoolName,
       );
 
       // Write to Firestore database

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:biometric/config/constants.dart';
@@ -27,6 +28,16 @@ class _SignupScreenState extends State<SignupScreen> {
   final _joiningDateController = TextEditingController();
   DateTime? _selectedJoiningDate;
   String? _selectedDesignation;
+  String? _selectedSchoolName;
+
+  // Curated list of schools
+  final List<String> _schools = [
+    'Vasant Primary Ashram School',
+    'Jawahar Secondary Ashram School',
+    'Jawahar Junior college',
+    'Indira Gandi Boys Hostel',
+    'Soba Naik Balgruh',
+  ];
 
   // Curated list of official job designations
   final List<String> _designations = [
@@ -142,8 +153,8 @@ class _SignupScreenState extends State<SignupScreen> {
                                     width: 1,
                                   ),
                                 ),
-                                child: Row(
-                                  children: const [
+                                child: const Row(
+                                  children: [
                                     Icon(Icons.shield_outlined, color: AppConstants.primary, size: 24),
                                     SizedBox(width: 12),
                                     Expanded(
@@ -230,8 +241,13 @@ class _SignupScreenState extends State<SignupScreen> {
                               TextFormField(
                                 controller: _employeeIdController,
                                 style: const TextStyle(color: AppConstants.textPrimary),
+                                textCapitalization: TextCapitalization.characters,
+                                inputFormatters: [
+                                  LengthLimitingTextInputFormatter(4),
+                                  FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                                ],
                                 decoration: InputDecoration(
-                                  hintText: 'e.g. EMP-2026-042',
+                                  hintText: 'e.g. H001',
                                   hintStyle: const TextStyle(color: AppConstants.textSecondary),
                                   prefixIcon: const Icon(Icons.badge, color: AppConstants.primary),
                                   border: OutlineInputBorder(
@@ -253,6 +269,10 @@ class _SignupScreenState extends State<SignupScreen> {
                                   if (value == null || value.trim().isEmpty) {
                                     return 'Please enter your Employee ID';
                                   }
+                                  final cleaned = value.trim().toUpperCase();
+                                  if (!RegExp(r'^[A-Z][0-9]{3}$').hasMatch(cleaned)) {
+                                    return 'Must be a letter followed by 3 digits (e.g. H001)';
+                                  }
                                   return null;
                                 },
                               ),
@@ -271,6 +291,12 @@ class _SignupScreenState extends State<SignupScreen> {
                               TextFormField(
                                 controller: _sevarthIdController,
                                 style: const TextStyle(color: AppConstants.textPrimary),
+                                textCapitalization: TextCapitalization.characters,
+                                inputFormatters: [
+                                  TextInputFormatter.withFunction((oldValue, newValue) {
+                                    return newValue.copyWith(text: newValue.text.toUpperCase());
+                                  }),
+                                ],
                                 decoration: InputDecoration(
                                   hintText: 'Enter your 12-char Sevarth ID',
                                   hintStyle: const TextStyle(color: AppConstants.textSecondary),
@@ -345,6 +371,64 @@ class _SignupScreenState extends State<SignupScreen> {
                               ),
                               const SizedBox(height: 20),
 
+                              // Custom Dropdown field: School Name
+                              const Text(
+                                'School Name',
+                                style: TextStyle(
+                                  color: AppConstants.textSecondary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              DropdownButtonFormField<String>(
+                                value: _selectedSchoolName,
+                                isExpanded: true,
+                                dropdownColor: AppConstants.cardBg,
+                                style: const TextStyle(color: AppConstants.textPrimary),
+                                decoration: InputDecoration(
+                                  hintText: 'Select School Name',
+                                  hintStyle: const TextStyle(color: AppConstants.textSecondary),
+                                  prefixIcon: const Icon(Icons.school_rounded, color: AppConstants.primary),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(color: AppConstants.primary),
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.white.withOpacity(0.02),
+                                ),
+                                items: _schools.map((school) {
+                                  return DropdownMenuItem<String>(
+                                    value: school,
+                                    child: Text(
+                                      school,
+                                      style: const TextStyle(color: AppConstants.textPrimary),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedSchoolName = value;
+                                  });
+                                },
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please select your school';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 20),
+
                               // Custom Dropdown field: Designation
                               const Text(
                                 'Job Designation',
@@ -357,6 +441,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               const SizedBox(height: 8),
                               DropdownButtonFormField<String>(
                                 value: _selectedDesignation,
+                                isExpanded: true,
                                 dropdownColor: AppConstants.cardBg,
                                 style: const TextStyle(color: AppConstants.textPrimary),
                                 decoration: InputDecoration(
@@ -384,6 +469,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                     child: Text(
                                       designation,
                                       style: const TextStyle(color: AppConstants.textPrimary),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   );
                                 }).toList(),
@@ -479,7 +565,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               gradient: AppConstants.secondaryGradient,
                               isLoading: auth.isLoading,
                               onPressed: () async {
-                                if (_formKey.currentState!.validate() && (isAdmin || (_selectedDesignation != null && _selectedJoiningDate != null))) {
+                                if (_formKey.currentState!.validate() && (isAdmin || (_selectedDesignation != null && _selectedJoiningDate != null && _selectedSchoolName != null))) {
                                   try {
                                     if (isAdmin) {
                                       await auth.signUpAdmin(
@@ -489,10 +575,11 @@ class _SignupScreenState extends State<SignupScreen> {
                                       await auth.signUpEmployee(
                                         name: _nameController.text.trim(),
                                         designation: _selectedDesignation!,
-                                        employeeId: _employeeIdController.text.trim(),
-                                        sevarthId: _sevarthIdController.text.trim(),
+                                        employeeId: _employeeIdController.text.trim().toUpperCase(),
+                                        sevarthId: _sevarthIdController.text.trim().toUpperCase(),
                                         aadhaarNumber: _aadhaarController.text.trim(),
                                         joiningDate: _selectedJoiningDate!,
+                                        schoolName: _selectedSchoolName!,
                                       );
                                     }
                                     if (mounted) {
@@ -502,8 +589,8 @@ class _SignupScreenState extends State<SignupScreen> {
                                         builder: (context) => AlertDialog(
                                           backgroundColor: AppConstants.cardBg,
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                                          title: Row(
-                                            children: const [
+                                          title: const Row(
+                                            children: [
                                               Icon(Icons.check_circle_rounded, color: AppConstants.secondary, size: 28),
                                               SizedBox(width: 10),
                                               Text(

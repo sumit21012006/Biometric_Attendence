@@ -66,5 +66,22 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.943010912638-8upmiv026pu5q92re03n37r4gfsfmeoe</string>
+			</array>
+		</dict>
+	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app requires access to your location to verify if you are within the school boundaries for marking attendance.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app requires access to your location to verify if you are within the school boundaries for marking attendance.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>This app requires Face ID/Touch ID access to authenticate your identity when marking attendance.</string>
 </dict>
 </plist>

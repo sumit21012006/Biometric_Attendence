@@ -8,6 +8,7 @@ import 'package:biometric/providers/attendance_provider.dart';
 import 'package:biometric/screens/auth/login_screen.dart';
 import 'package:biometric/screens/employee/employee_dashboard.dart';
 import 'package:biometric/screens/admin/admin_dashboard.dart';
+import 'package:biometric/screens/auth/pending_approval_screen.dart';
 import 'package:biometric/services/notification_service.dart';
 
 void main() async {
@@ -64,6 +65,7 @@ class BiometricAttendanceApp extends StatelessWidget {
             backgroundColor: AppConstants.background,
             elevation: 0,
             iconTheme: IconThemeData(color: Colors.white),
+            titleTextStyle: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ),
         home: const AuthSessionGate(),
@@ -95,7 +97,12 @@ class AuthSessionGate extends StatelessWidget {
           return const LoginScreen();
         }
 
-        // 3. Session is authenticated! Determine role layout route
+        // 3. Check if registration is pending approval (for employees)
+        if (auth.currentUser!.role == 'employee' && !auth.currentUser!.isApproved) {
+          return const PendingApprovalScreen();
+        }
+
+        // 4. Session is authenticated! Determine role layout route
         if (auth.currentUser!.role == 'admin') {
           return const AdminDashboard();
         } else {

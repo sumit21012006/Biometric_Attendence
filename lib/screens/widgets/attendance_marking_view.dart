@@ -289,8 +289,8 @@ class _AttendanceMarkingViewState extends State<AttendanceMarkingView> {
           builder: (context) => AlertDialog(
             backgroundColor: AppConstants.cardBg,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Row(
-              children: const [
+            title: const Row(
+              children: [
                 Icon(Icons.check_circle, color: AppConstants.secondary, size: 30),
                 SizedBox(width: 10),
                 Text('Success', style: TextStyle(color: AppConstants.textPrimary)),

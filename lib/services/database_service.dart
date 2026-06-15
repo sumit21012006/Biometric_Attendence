@@ -91,7 +91,7 @@ class DatabaseService {
     });
   }
 
-  // Stream of all employees (Admin view)
+  // Stream of all approved employees (Admin view)
   Stream<List<UserModel>> getEmployeesStream() {
     return _firestore
         .collection('users')
@@ -100,8 +100,92 @@ class DatabaseService {
         .map((snapshot) {
       return snapshot.docs
           .map((doc) => UserModel.fromMap(doc.data(), doc.id))
+          .where((user) => user.isApproved)
           .toList();
     });
+  }
+
+  // Stream of pending employees (Admin approvals view)
+  Stream<List<UserModel>> getPendingEmployeesStream() {
+    return _firestore
+        .collection('users')
+        .where('role', isEqualTo: 'employee')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => UserModel.fromMap(doc.data(), doc.id))
+          .where((user) => !user.isApproved)
+          .toList();
+    });
+  }
+
+  // Approve employee registration
+  Future<void> approveUser(String uid) async {
+    try {
+      await _firestore.collection('users').doc(uid).update({
+        'isApproved': true,
+      });
+    } catch (e) {
+      print('DatabaseService: Error approving user: $e');
+      rethrow;
+    }
+  }
+
+  // Reject and delete employee registration
+  Future<void> rejectUser(String uid) async {
+    try {
+      await _firestore.collection('users').doc(uid).delete();
+    } catch (e) {
+      print('DatabaseService: Error rejecting user: $e');
+      rethrow;
+    }
+  }
+
+  // Check if a device ID is already bound to any employee in the system (excluding a specific UID)
+  Future<bool> isDeviceIdAlreadyBound(String deviceId, {String? excludeUid}) async {
+    // Skip validation for default testing fallback device IDs
+    if (deviceId == 'web-emulator' || deviceId == 'desktop-emulator' || deviceId == 'unknown-device-id') {
+      return false;
+    }
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .where('deviceId', isEqualTo: deviceId)
+          .get();
+      
+      if (snapshot.docs.isNotEmpty) {
+        if (excludeUid != null) {
+          // Check if any OTHER user has this device ID
+          return snapshot.docs.any((doc) => doc.id != excludeUid);
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('DatabaseService: Error checking device ID binding: $e');
+      return false;
+    }
+  }
+
+  // Check if an Employee ID is already registered in the system (excluding a specific UID if needed)
+  Future<bool> isEmployeeIdAlreadyExists(String employeeId, {String? excludeUid}) async {
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .where('employeeId', isEqualTo: employeeId.trim().toUpperCase())
+          .get();
+      
+      if (snapshot.docs.isNotEmpty) {
+        if (excludeUid != null) {
+          return snapshot.docs.any((doc) => doc.id != excludeUid);
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('DatabaseService: Error checking employee ID: $e');
+      return false;
+    }
   }
 
   // Stream of all attendance logs (Admin view)

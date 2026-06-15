@@ -210,8 +210,8 @@ class _SettingsManagementScreenState extends State<SettingsManagementScreen> {
                   const Divider(color: Colors.white12, height: 32),
 
                   // Admin Access Emails Section
-                  Row(
-                    children: const [
+                  const Row(
+                    children: [
                       Icon(Icons.admin_panel_settings, color: AppConstants.primary, size: 20),
                       SizedBox(width: 8),
                       Text(
@@ -382,8 +382,8 @@ class _SettingsManagementScreenState extends State<SettingsManagementScreen> {
                           await locationProvider.updateOfficeConfig(newConfig);
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Text('Configurations saved and synced successfully.'),
+                              const SnackBar(
+                                content: Text('Configurations saved and synced successfully.'),
                                 backgroundColor: AppConstants.success,
                               ),
                             );
@@ -472,8 +472,8 @@ class _SettingsManagementScreenState extends State<SettingsManagementScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Updated coordinates to current GPS position.'),
+          const SnackBar(
+            content: Text('Updated coordinates to current GPS position.'),
             backgroundColor: AppConstants.success,
           ),
         );

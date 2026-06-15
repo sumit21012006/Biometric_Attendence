@@ -168,6 +168,16 @@ class AuthProvider extends ChangeNotifier {
     } else {
       // Employee: verify device binding status
       if (userToVerify.deviceId == null) {
+        // Verify device fingerprint uniqueness before binding
+        final isAlreadyBound = await _dbService.isDeviceIdAlreadyBound(_currentDeviceId!, excludeUid: firebaseUser.uid);
+        if (isAlreadyBound) {
+          _isDeviceLocked = true;
+          _currentUser = null;
+          await signOut(silent: true);
+          _isLoading = false;
+          notifyListeners();
+          throw Exception('This mobile device is already bound to another employee account.');
+        }
         // Device is unbound (e.g. initial login or admin-reset). Bind it now!
         await _dbService.updateDeviceId(firebaseUser.uid, _currentDeviceId);
         _currentUser = userToVerify.copyWith(deviceId: _currentDeviceId);
@@ -196,6 +206,7 @@ class AuthProvider extends ChangeNotifier {
     String? sevarthId,
     String? aadhaarNumber,
     DateTime? joiningDate,
+    required String schoolName,
   }) async {
     if (_tempGoogleUser == null || _currentDeviceId == null) {
       throw Exception('Missing Google info or Device ID for registration.');
@@ -205,18 +216,34 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Verify device fingerprint uniqueness
+      final isAlreadyBound = await _dbService.isDeviceIdAlreadyBound(_currentDeviceId!);
+      if (isAlreadyBound) {
+        throw Exception('This mobile device is already bound to another employee account.');
+      }
+
+      final cleanedEmpId = employeeId.trim().toUpperCase();
+
+      // Verify employee ID uniqueness
+      final isEmpIdExists = await _dbService.isEmployeeIdAlreadyExists(cleanedEmpId);
+      if (isEmpIdExists) {
+        throw Exception('Employee ID "$cleanedEmpId" is already registered to another account.');
+      }
+
       final newUser = UserModel(
         uid: _tempGoogleUser!.uid,
         name: name,
         email: _tempGoogleUser!.email ?? '',
         designation: designation,
-        employeeId: employeeId,
+        employeeId: cleanedEmpId,
         sevarthId: sevarthId,
         aadhaarNumber: aadhaarNumber,
         joiningDate: joiningDate,
         deviceId: _currentDeviceId, // Binds current hardware device ID
         role: 'employee',
         createdAt: DateTime.now(),
+        isApproved: false,
+        schoolName: schoolName,
       );
 
       await _dbService.createUser(newUser);
@@ -294,5 +321,15 @@ class AuthProvider extends ChangeNotifier {
     _isSignupRequired = false;
     _tempGoogleUser = null;
     notifyListeners();
+  }
+
+  // Refresh current user's registration and approval status from database
+  Future<void> refreshUserStatus() async {
+    final User? firebaseUser = _firebaseAuth.currentUser;
+    if (firebaseUser != null) {
+      _isLoading = true;
+      notifyListeners();
+      await _loadUserAndVerifyDevice(firebaseUser);
+    }
   }
 }

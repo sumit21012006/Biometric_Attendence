@@ -15,6 +15,7 @@ class AttendanceRecord {
   final double distance; // Distance from office in meters
   final bool verified;
   final bool isAutoCheckout;
+  final String? schoolName;
 
   AttendanceRecord({
     required this.id,
@@ -31,6 +32,7 @@ class AttendanceRecord {
     required this.distance,
     required this.verified,
     this.isAutoCheckout = false,
+    this.schoolName,
   });
 
   factory AttendanceRecord.fromMap(Map<String, dynamic> map, String id) {
@@ -51,6 +53,7 @@ class AttendanceRecord {
       distance: (map['distance'] as num? ?? 0.0).toDouble(),
       verified: map['verified'] ?? false,
       isAutoCheckout: map['isAutoCheckout'] ?? false,
+      schoolName: map['schoolName'],
     );
   }
 
@@ -69,6 +72,7 @@ class AttendanceRecord {
       'distance': distance,
       'verified': verified,
       'isAutoCheckout': isAutoCheckout,
+      'schoolName': schoolName,
     };
   }
 }

@@ -7,14 +7,33 @@ import 'package:biometric/models/attendance_record.dart';
 import 'package:biometric/services/database_service.dart';
 import 'package:biometric/screens/widgets/glass_card.dart';
 
-class AttendanceHistoryScreen extends StatelessWidget {
+class AttendanceHistoryScreen extends StatefulWidget {
   const AttendanceHistoryScreen({Key? key}) : super(key: key);
+
+  @override
+  State<AttendanceHistoryScreen> createState() => _AttendanceHistoryScreenState();
+}
+
+class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
+  DateTime _selectedMonth = DateTime.now();
+  final DatabaseService _dbService = DatabaseService();
+
+  void _previousMonth() {
+    setState(() {
+      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
+    });
+  }
+
+  void _nextMonth() {
+    setState(() {
+      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final user = auth.currentUser;
-    final dbService = DatabaseService();
 
     return Scaffold(
       backgroundColor: AppConstants.background,
@@ -34,7 +53,7 @@ class AttendanceHistoryScreen extends StatelessWidget {
         child: user == null
             ? const Center(child: Text('Session Error', style: TextStyle(color: Colors.white)))
             : StreamBuilder<List<AttendanceRecord>>(
-                stream: dbService.getEmployeeAttendanceStream(user.uid),
+                stream: _dbService.getEmployeeAttendanceStream(user.uid),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
@@ -53,35 +72,10 @@ class AttendanceHistoryScreen extends StatelessWidget {
 
                   final List<AttendanceRecord> records = snapshot.data ?? [];
 
-                  if (records.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.history_toggle_off_rounded, size: 64, color: AppConstants.textSecondary),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'No Attendance Logs Found',
-                            style: TextStyle(
-                              color: AppConstants.textPrimary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Your marked check-ins and check-outs will appear here.',
-                            style: TextStyle(color: AppConstants.textSecondary, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                  return ListView(
+                    physics: const BouncingScrollPhysics(),
                     children: [
-                      // Beautiful personal insights dashboard
+                      // Beautiful personal insights dashboard (Calendar + Legend + KPIs)
                       _buildStatsDashboard(context, records),
                       
                       // Section Header
@@ -98,189 +92,211 @@ class AttendanceHistoryScreen extends StatelessWidget {
                       ),
                       
                       // Logs List
-                      Expanded(
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 4.0),
-                          itemCount: records.length,
-                          itemBuilder: (context, index) {
-                            final record = records[index];
-                            final bool isCheckIn = record.type == 'check_in';
-                            final String dateStr = DateFormat('EEE, MMM d, y').format(record.timestamp);
-                            final String timeStr = DateFormat('hh:mm a').format(record.timestamp);
-
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 14.0),
-                              child: GlassCard(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      records.isEmpty
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(40.0),
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        // Log Type Badge (In / Out)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                          decoration: BoxDecoration(
-                                            color: record.isAutoCheckout
-                                                ? AppConstants.error.withOpacity(0.15)
-                                                : (isCheckIn
-                                                    ? AppConstants.secondary.withOpacity(0.12)
-                                                    : AppConstants.accent.withOpacity(0.12)),
-                                            borderRadius: BorderRadius.circular(10),
-                                            border: record.isAutoCheckout
-                                                ? Border.all(color: AppConstants.error.withOpacity(0.4), width: 1)
-                                                : null,
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(
-                                                record.isAutoCheckout
-                                                    ? Icons.warning_amber_rounded
-                                                    : (isCheckIn ? Icons.login_rounded : Icons.logout_rounded),
-                                                color: record.isAutoCheckout
-                                                    ? AppConstants.error
-                                                    : (isCheckIn ? AppConstants.secondary : AppConstants.accent),
-                                                size: 14,
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                record.isAutoCheckout
-                                                    ? 'AUTO CHECK OUT'
-                                                    : (isCheckIn ? 'CHECK IN' : 'CHECK OUT'),
-                                                style: TextStyle(
-                                                  color: record.isAutoCheckout
-                                                      ? AppConstants.error
-                                                      : (isCheckIn ? AppConstants.secondary : AppConstants.accent),
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 12,
-                                                  letterSpacing: 0.5,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        
-                                        // Verification Badge
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              record.isAutoCheckout ? Icons.info_outline : Icons.verified_user,
-                                              color: record.isAutoCheckout ? AppConstants.error : AppConstants.secondary,
-                                              size: 16,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              record.isAutoCheckout ? 'System Auto' : 'Verified',
-                                              style: TextStyle(
-                                                color: record.isAutoCheckout ? AppConstants.error : AppConstants.secondary,
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                    const Divider(color: Colors.white12, height: 20),
-                                    
-                                    if (record.isAutoCheckout) ...[
-                                      Container(
-                                        margin: const EdgeInsets.only(bottom: 12),
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                        decoration: BoxDecoration(
-                                          color: AppConstants.error.withOpacity(0.08),
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(color: AppConstants.error.withOpacity(0.2), width: 1),
-                                        ),
-                                        child: Row(
-                                          children: const [
-                                            Icon(Icons.warning_amber_rounded, color: AppConstants.error, size: 14),
-                                            SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                'Forgot to check out. Auto-checkout executed at 6:00 PM.',
-                                                style: TextStyle(
-                                                  color: AppConstants.error,
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                    
-                                    // Log Information
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              dateStr,
-                                              style: const TextStyle(
-                                                color: AppConstants.textPrimary,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 15,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              timeStr,
-                                              style: const TextStyle(
-                                                color: AppConstants.textSecondary,
-                                                fontSize: 13,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        
-                                        // Distance indicators
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.end,
-                                          children: [
-                                            const Text(
-                                              'Accuracy Dist.',
-                                              style: TextStyle(
-                                                color: AppConstants.textSecondary,
-                                                fontSize: 11,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              '${record.distance.toStringAsFixed(1)}m from office',
-                                              style: const TextStyle(
-                                                color: AppConstants.textPrimary,
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 10),
-                                    
-                                    // Device serial logs
+                                    Icon(Icons.history_toggle_off_rounded, size: 48, color: AppConstants.textSecondary),
+                                    SizedBox(height: 12),
                                     Text(
-                                      'Hardware: ${record.deviceId}',
-                                      style: const TextStyle(
-                                        color: Colors.white24,
-                                        fontSize: 9,
-                                        fontFamily: 'monospace',
+                                      'No Log Activities Found',
+                                      style: TextStyle(
+                                        color: AppConstants.textPrimary,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                            );
-                          },
-                        ),
-                      ),
+                            )
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 4.0),
+                              itemCount: records.length,
+                              itemBuilder: (context, index) {
+                                final record = records[index];
+                                final bool isCheckIn = record.type == 'check_in';
+                                final String dateStr = DateFormat('EEE, MMM d, y').format(record.timestamp);
+                                final String timeStr = DateFormat('hh:mm a').format(record.timestamp);
+
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 14.0),
+                                  child: GlassCard(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            // Log Type Badge (In / Out)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: record.isAutoCheckout
+                                                    ? AppConstants.error.withOpacity(0.15)
+                                                    : (isCheckIn
+                                                        ? AppConstants.secondary.withOpacity(0.12)
+                                                        : AppConstants.accent.withOpacity(0.12)),
+                                                borderRadius: BorderRadius.circular(10),
+                                                border: record.isAutoCheckout
+                                                    ? Border.all(color: AppConstants.error.withOpacity(0.4), width: 1)
+                                                    : null,
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    record.isAutoCheckout
+                                                        ? Icons.warning_amber_rounded
+                                                        : (isCheckIn ? Icons.login_rounded : Icons.logout_rounded),
+                                                    color: record.isAutoCheckout
+                                                        ? AppConstants.error
+                                                        : (isCheckIn ? AppConstants.secondary : AppConstants.accent),
+                                                    size: 14,
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  Text(
+                                                    record.isAutoCheckout
+                                                        ? 'AUTO CHECK OUT'
+                                                        : (isCheckIn ? 'CHECK IN' : 'CHECK OUT'),
+                                                    style: TextStyle(
+                                                      color: record.isAutoCheckout
+                                                          ? AppConstants.error
+                                                          : (isCheckIn ? AppConstants.secondary : AppConstants.accent),
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 12,
+                                                      letterSpacing: 0.5,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            
+                                            // Verification Badge
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  record.isAutoCheckout ? Icons.info_outline : Icons.verified_user,
+                                                  color: record.isAutoCheckout ? AppConstants.error : AppConstants.secondary,
+                                                  size: 16,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  record.isAutoCheckout ? 'System Auto' : 'Verified',
+                                                  style: TextStyle(
+                                                    color: record.isAutoCheckout ? AppConstants.error : AppConstants.secondary,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                    
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                        const Divider(color: Colors.white12, height: 20),
+                                        
+                                        if (record.isAutoCheckout) ...[
+                                          Container(
+                                            margin: const EdgeInsets.only(bottom: 12),
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                            decoration: BoxDecoration(
+                                              color: AppConstants.error.withOpacity(0.08),
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(color: AppConstants.error.withOpacity(0.2), width: 1),
+                                            ),
+                                            child: const Row(
+                                              children: [
+                                                Icon(Icons.warning_amber_rounded, color: AppConstants.error, size: 14),
+                                                SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    'Forgot to check out. Auto-checkout executed at 9:30 PM.',
+                                                    style: TextStyle(
+                                                      color: AppConstants.error,
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                        
+                                        // Log Information
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  dateStr,
+                                                  style: const TextStyle(
+                                                    color: AppConstants.textPrimary,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 15,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  timeStr,
+                                                  style: const TextStyle(
+                                                    color: AppConstants.textSecondary,
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            
+                                            // Distance indicators
+                                            Column(
+                                              crossAxisAlignment: CrossAxisAlignment.end,
+                                              children: [
+                                                const Text(
+                                                  'Accuracy Dist.',
+                                                  style: TextStyle(
+                                                    color: AppConstants.textSecondary,
+                                                    fontSize: 11,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  '${record.distance.toStringAsFixed(1)}m from office',
+                                                  style: const TextStyle(
+                                                    color: AppConstants.textPrimary,
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 10),
+                                        
+                                        // Device serial logs
+                                        Text(
+                                          'Hardware: ${record.deviceId}',
+                                          style: const TextStyle(
+                                            color: Colors.white24,
+                                            fontSize: 9,
+                                            fontFamily: 'monospace',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
                     ],
                   );
                 },
@@ -291,166 +307,290 @@ class AttendanceHistoryScreen extends StatelessWidget {
 
   // Build beautiful insights & KPIs Dashboard for Employees
   Widget _buildStatsDashboard(BuildContext context, List<AttendanceRecord> records) {
-    // 1. Calculate stats from history records
-    final uniqueDays = records
-        .map((r) => DateFormat('yyyy-MM-dd').format(r.timestamp))
-        .toSet()
-        .length;
-    final checkInCount = records.where((r) => r.type == 'check_in').length;
-    final forgotCheckOuts = records.where((r) => r.isAutoCheckout).length;
+    // Determine total days in the selected month
+    final int year = _selectedMonth.year;
+    final int month = _selectedMonth.month;
+    final int daysInMonth = DateTime(year, month + 1, 0).day;
+    final DateTime firstDay = DateTime(year, month, 1);
     
-    final verifiedCount = records.where((r) => r.verified).length;
-    final verificationRate = records.isNotEmpty
-        ? (verifiedCount / records.length * 100).toInt()
-        : 100;
-        
-    final avgDistance = records.isNotEmpty
-        ? records.map((r) => r.distance).reduce((a, b) => a + b) / records.length
-        : 0.0;
+    // Day of week offset (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+    final int offset = firstDay.weekday % 7;
 
-    // Calculate dynamic consistency percentage
-    final double consistencyVal = checkInCount == 0
-        ? 1.0
-        : (1.0 - (forgotCheckOuts / checkInCount)).clamp(0.0, 1.0);
-    final int consistencyPercentage = (consistencyVal * 100).toInt();
+    // Helper to resolve daily status
+    String? getDayStatus(int d) {
+      final dayRecords = records.where((r) {
+        return r.timestamp.year == year &&
+               r.timestamp.month == month &&
+               r.timestamp.day == d;
+      }).toList();
 
+      if (dayRecords.isEmpty) {
+        final date = DateTime(year, month, d);
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        if (date.isBefore(today)) {
+          return "A"; // Absent if past day
+        }
+        return null; // Future or today (if not marked yet)
+      }
+
+      AttendanceRecord? checkIn;
+      AttendanceRecord? checkOut;
+
+      for (var r in dayRecords) {
+        if (r.type == 'check_in') {
+          checkIn = r;
+        } else if (r.type == 'check_out') {
+          checkOut = r;
+        }
+      }
+
+      // Base status from check-in
+      String status = "P";
+      if (checkIn != null) {
+        final time = checkIn.timestamp;
+        final isLate = time.hour > 9 || (time.hour == 9 && time.minute > 50);
+        status = isLate ? "L" : "P";
+      }
+
+      // Update status based on check-out
+      if (checkOut != null) {
+        if (checkOut.isAutoCheckout) {
+          status = "F"; // Forgot checkout
+        } else {
+          final time = checkOut.timestamp;
+          final isEarly = time.hour < 16 || (time.hour == 16 && time.minute < 45);
+          if (isEarly) {
+            status = "E"; // Early checkout
+          }
+        }
+      } else {
+        // No checkout yet. If it is a past day, it counts as Forgot Checkout (F)
+        final date = DateTime(year, month, d);
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        if (date.isBefore(today)) {
+          status = "F";
+        }
+      }
+
+      return status;
+    }
+
+    // Compute month-level status counts
+    int presentCount = 0;
+    int absentCount = 0;
+    int earlyCount = 0;
+    int lateCount = 0;
+
+    for (int d = 1; d <= daysInMonth; d++) {
+      final status = getDayStatus(d);
+      if (status == "P") {
+        presentCount++;
+      } else if (status == "A") {
+        absentCount++;
+      } else if (status == "E") {
+        earlyCount++;
+      } else if (status == "L") {
+        lateCount++;
+      } else if (status == "F") {
+        // Option 1: Count Forgot Checkout (F) in Present Days (since they worked, but forgot checkout)
+        presentCount++;
+      }
+    }
+
+    // Render components
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20.0, 16.0, 20.0, 8.0),
+      padding: const EdgeInsets.fromLTRB(20.0, 4.0, 20.0, 4.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Flawless status summary card
-          Container(
-            padding: const EdgeInsets.all(18.0),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppConstants.primary.withOpacity(0.9),
-                  AppConstants.primary.withOpacity(0.4),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          // Month Selector Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left, color: Colors.white),
+                onPressed: _previousMonth,
               ),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: Colors.white24, width: 1.5),
-              boxShadow: [
-                BoxShadow(
-                  color: AppConstants.primary.withOpacity(0.25),
-                  blurRadius: 15,
-                  offset: const Offset(0, 8),
+              Text(
+                DateFormat('MMMM yyyy').format(_selectedMonth).toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
                 ),
-              ],
-            ),
-            child: Row(
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right, color: Colors.white),
+                onPressed: _nextMonth,
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 4),
+
+          // Glass Card wrapping the Calendar & Legend
+          GlassCard(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+            child: Column(
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'MY PERFORMANCE METER',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        forgotCheckOuts == 0 ? 'Flawless Profile' : 'Attention Required',
+                // Weekday Headers
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) {
+                    return SizedBox(
+                      width: 36,
+                      child: Text(
+                        day,
+                        textAlign: TextAlign.center,
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
+                          color: AppConstants.textSecondary,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        forgotCheckOuts == 0
-                            ? 'Excellent consistency! Keep checking out daily.'
-                            : 'Remember to check out at shift ends to avoid automated logs.',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
+                    );
+                  }).toList(),
                 ),
-                const SizedBox(width: 16),
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    SizedBox(
-                      width: 64,
-                      height: 64,
-                      child: CircularProgressIndicator(
-                        value: consistencyVal,
-                        strokeWidth: 7,
-                        backgroundColor: Colors.white12,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          forgotCheckOuts == 0 ? AppConstants.secondary : AppConstants.warning,
+                
+                const SizedBox(height: 4),
+                
+                // Calendar Days Grid
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 7,
+                    mainAxisSpacing: 5,
+                    crossAxisSpacing: 5,
+                    childAspectRatio: 1.05,
+                  ),
+                  itemCount: offset + daysInMonth,
+                  itemBuilder: (context, index) {
+                    if (index < offset) {
+                      return const SizedBox.shrink(); // Empty space before 1st day of month
+                    }
+                    
+                    final int dayNum = index - offset + 1;
+                    final String? status = getDayStatus(dayNum);
+                    
+                    // Style attributes based on status
+                    Color bg = Colors.transparent;
+                    Color text = Colors.white70;
+                    Border? border = Border.all(color: Colors.white12, width: 1);
+                    String label = '$dayNum';
+
+                    if (status != null) {
+                      label = status;
+                      border = null;
+                      if (status == "P") {
+                        bg = const Color(0xFFE6F4EA);
+                        text = const Color(0xFF137333);
+                      } else if (status == "A") {
+                        bg = const Color(0xFFF1F3F4).withOpacity(0.15);
+                        text = const Color(0xFF9AA0A6);
+                      } else if (status == "L") {
+                        bg = const Color(0xFFFFF3E0);
+                        text = const Color(0xFFE65100);
+                      } else if (status == "E") {
+                        bg = const Color(0xFFE0F2FE);
+                        text = const Color(0xFF0369a1);
+                      } else if (status == "F") {
+                        bg = const Color(0xFFFCE8E6);
+                        text = const Color(0xFFC5221F);
+                      }
+                    }
+
+                    return Center(
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: bg,
+                          shape: BoxShape.circle,
+                          border: border,
+                        ),
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            color: text,
+                            fontSize: status != null ? 12 : 11,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
-                    Text(
-                      '$consistencyPercentage%',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    );
+                  },
+                ),
+                
+                const Divider(color: Colors.white12, height: 12),
+
+                // Legend row explaining P, A, L, E, F
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 8,
+                  runSpacing: 2,
+                  children: [
+                    _buildLegendItem("P", "Present", const Color(0xFFE6F4EA), const Color(0xFF137333)),
+                    _buildLegendItem("A", "Absent", const Color(0xFFF1F3F4).withOpacity(0.15), const Color(0xFF9AA0A6)),
+                    _buildLegendItem("L", "Late", const Color(0xFFFFF3E0), const Color(0xFFE65100)),
+                    _buildLegendItem("E", "Early Out", const Color(0xFFE0F2FE), const Color(0xFF0369a1)),
+                    _buildLegendItem("F", "Forgot Out", const Color(0xFFFCE8E6), const Color(0xFFC5221F)),
                   ],
                 ),
               ],
             ),
           ),
           
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           
-          // KPI Metric Items Grid (2x2 Row blocks)
+          // KPI Metric blocks (2x2 grid)
           Row(
             children: [
               Expanded(
                 child: _buildKPICard(
-                  title: 'Working Days',
-                  value: '$uniqueDays Days',
-                  icon: Icons.calendar_month_outlined,
-                  color: AppConstants.secondary,
+                  title: 'Present Days',
+                  value: '$presentCount Days',
+                  icon: Icons.check_circle_outline_rounded,
+                  color: const Color(0xFF137333),
+                  bg: const Color(0xFFE6F4EA),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildKPICard(
-                  title: 'Security Verify',
-                  value: '$verificationRate%',
-                  icon: Icons.fingerprint_rounded,
-                  color: AppConstants.primary,
+                  title: 'Absent Days',
+                  value: '$absentCount Days',
+                  icon: Icons.cancel_outlined,
+                  color: const Color(0xFF9AA0A6),
+                  bg: const Color(0xFFF1F3F4).withOpacity(0.15),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           Row(
             children: [
               Expanded(
                 child: _buildKPICard(
-                  title: 'Forgot Out',
-                  value: '$forgotCheckOuts times',
-                  icon: Icons.warning_amber_rounded,
-                  color: forgotCheckOuts > 0 ? AppConstants.error : AppConstants.textSecondary,
-                  alertMode: forgotCheckOuts > 0,
+                  title: 'Early Checkouts',
+                  value: '$earlyCount Days',
+                  icon: Icons.hourglass_bottom_rounded,
+                  color: const Color(0xFF0369a1),
+                  bg: const Color(0xFFE0F2FE),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildKPICard(
-                  title: 'Avg. Accuracy',
-                  value: '${avgDistance.toStringAsFixed(1)}m',
-                  icon: Icons.map_outlined,
-                  color: AppConstants.primary,
+                  title: 'Late Check-ins',
+                  value: '$lateCount Days',
+                  icon: Icons.access_time_rounded,
+                  color: const Color(0xFFE65100),
+                  bg: const Color(0xFFFFF3E0),
                 ),
               ),
             ],
@@ -460,22 +600,56 @@ class AttendanceHistoryScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildLegendItem(String letter, String label, Color bg, Color textColor) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 14,
+          height: 14,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: bg,
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            letter,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 8,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppConstants.textSecondary,
+            fontSize: 9,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
   // Dashboard item card builder helper method
   Widget _buildKPICard({
     required String title,
     required String value,
     required IconData icon,
     required Color color,
-    bool alertMode = false,
+    required Color bg,
   }) {
     return GlassCard(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: Row(
         children: [
           CircleAvatar(
-            radius: 16,
-            backgroundColor: color.withOpacity(0.12),
-            child: Icon(icon, color: color, size: 16),
+            radius: 13,
+            backgroundColor: bg,
+            child: Icon(icon, color: color, size: 13),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -486,16 +660,16 @@ class AttendanceHistoryScreen extends StatelessWidget {
                   title,
                   style: const TextStyle(
                     color: AppConstants.textSecondary,
-                    fontSize: 9,
+                    fontSize: 9.5,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: TextStyle(
-                    color: alertMode ? AppConstants.error : AppConstants.textPrimary,
-                    fontSize: 12.5,
+                  style: const TextStyle(
+                    color: AppConstants.textPrimary,
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

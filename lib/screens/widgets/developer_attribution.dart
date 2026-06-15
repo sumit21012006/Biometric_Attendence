@@ -41,11 +41,11 @@ class DeveloperAttribution extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            Expanded(
+            const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
-                children: const [
+                children: [
                   Text(
                     'Application Developer',
                     style: TextStyle(

@@ -8,6 +8,7 @@ import 'package:biometric/screens/admin/settings_management.dart';
 import 'package:biometric/screens/widgets/school_banner.dart';
 import 'package:biometric/screens/widgets/developer_attribution.dart';
 import 'package:biometric/screens/widgets/attendance_marking_view.dart';
+import 'package:biometric/screens/admin/approvals_management.dart';
 
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({Key? key}) : super(key: key);
@@ -17,7 +18,7 @@ class AdminDashboard extends StatelessWidget {
     final auth = Provider.of<AuthProvider>(context);
     final email = auth.currentUser?.email ?? '';
     final isSuperAdmin = email.trim().toLowerCase() == 'sumit.m2106@gmail.com';
-    final tabCount = isSuperAdmin ? 2 : 3;
+    final tabCount = isSuperAdmin ? 3 : 4;
 
     return DefaultTabController(
       length: tabCount,
@@ -53,7 +54,9 @@ class AdminDashboard extends StatelessWidget {
                       children: const [
                         Icon(Icons.info_rounded, color: AppConstants.primary),
                         SizedBox(width: 10),
-                        Text('About Dashboard', style: TextStyle(color: AppConstants.textPrimary)),
+                        Expanded(
+                          child: Text('About Dashboard', style: TextStyle(color: AppConstants.textPrimary)),
+                        ),
                       ],
                     ),
                     content: Column(
@@ -117,6 +120,10 @@ class AdminDashboard extends StatelessWidget {
                       text: 'Attendance',
                     ),
                     Tab(
+                      icon: Icon(Icons.how_to_reg, size: 20),
+                      text: 'Approvals',
+                    ),
+                    Tab(
                       icon: Icon(Icons.tune, size: 20),
                       text: 'Config',
                     ),
@@ -125,6 +132,10 @@ class AdminDashboard extends StatelessWidget {
                     Tab(
                       icon: Icon(Icons.fingerprint, size: 20),
                       text: 'Attendance',
+                    ),
+                    Tab(
+                      icon: Icon(Icons.how_to_reg, size: 20),
+                      text: 'Approvals',
                     ),
                     Tab(
                       icon: Icon(Icons.devices, size: 20),
@@ -145,10 +156,12 @@ class AdminDashboard extends StatelessWidget {
                   children: isSuperAdmin
                       ? const [
                           AttendanceMarkingView(),
+                          ApprovalsManagementScreen(),
                           SettingsManagementScreen(),
                         ]
                       : const [
                           AttendanceMarkingView(),
+                          ApprovalsManagementScreen(),
                           DeviceManagementScreen(),
                           LogsManagementScreen(),
                         ],

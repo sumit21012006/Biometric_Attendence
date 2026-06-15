@@ -7,8 +7,8 @@ void showErrorDialog(BuildContext context, String title, String message) {
     builder: (context) => AlertDialog(
       backgroundColor: AppConstants.cardBg,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      title: Row(
-        children: const [
+      title: const Row(
+        children: [
           Icon(Icons.error_outline_rounded, color: AppConstants.accent, size: 28),
           SizedBox(width: 10),
           Text(

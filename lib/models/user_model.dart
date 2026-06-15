@@ -12,6 +12,8 @@ class UserModel {
   final String? sevarthId;
   final String? aadhaarNumber;
   final DateTime? joiningDate;
+  final bool isApproved;
+  final String? schoolName;
 
   UserModel({
     required this.uid,
@@ -25,6 +27,8 @@ class UserModel {
     this.sevarthId,
     this.aadhaarNumber,
     this.joiningDate,
+    this.isApproved = true,
+    this.schoolName,
   });
 
   // Factory constructor to create UserModel from Firestore document
@@ -45,6 +49,8 @@ class UserModel {
       joiningDate: map['joiningDate'] != null
           ? (map['joiningDate'] as Timestamp).toDate()
           : null,
+      isApproved: map['isApproved'] ?? true,
+      schoolName: map['schoolName'],
     );
   }
 
@@ -61,6 +67,8 @@ class UserModel {
       'sevarthId': sevarthId,
       'aadhaarNumber': aadhaarNumber,
       'joiningDate': joiningDate != null ? Timestamp.fromDate(joiningDate!) : null,
+      'isApproved': isApproved,
+      'schoolName': schoolName,
     };
   }
 
@@ -77,6 +85,8 @@ class UserModel {
     String? sevarthId,
     String? aadhaarNumber,
     DateTime? joiningDate,
+    bool? isApproved,
+    String? schoolName,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -90,6 +100,8 @@ class UserModel {
       sevarthId: sevarthId ?? this.sevarthId,
       aadhaarNumber: aadhaarNumber ?? this.aadhaarNumber,
       joiningDate: joiningDate ?? this.joiningDate,
+      isApproved: isApproved ?? this.isApproved,
+      schoolName: schoolName ?? this.schoolName,
     );
   }
 }
