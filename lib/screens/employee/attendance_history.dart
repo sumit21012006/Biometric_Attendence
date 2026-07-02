@@ -345,36 +345,36 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
         }
       }
 
-      // Base status from check-in
-      String status = "P";
-      if (checkIn != null) {
-        final time = checkIn.timestamp;
-        final isLate = time.hour > 9 || (time.hour == 9 && time.minute > 50);
-        status = isLate ? "L" : "P";
+      // Loophole fix: Must have check-in to be anything other than Absent (A)
+      if (checkIn == null) {
+        return "A";
       }
+
+      final checkInTime = checkIn.timestamp;
+      final isLate = checkInTime.hour > 9 || (checkInTime.hour == 9 && checkInTime.minute > 50);
 
       // Update status based on check-out
       if (checkOut != null) {
         if (checkOut.isAutoCheckout) {
-          status = "F"; // Forgot checkout
+          return isLate ? "LF" : "F"; // Forgot checkout
         } else {
           final time = checkOut.timestamp;
-          final isEarly = time.hour < 16 || (time.hour == 16 && time.minute < 45);
+          final isEarly = time.hour < 14;
           if (isEarly) {
-            status = "E"; // Early checkout
+            return "E"; // Early checkout
           }
+          return isLate ? "L" : "P";
         }
       } else {
-        // No checkout yet. If it is a past day, it counts as Forgot Checkout (F)
+        // No checkout yet. If it is a past day, it counts as Forgot Checkout
         final date = DateTime(year, month, d);
         final now = DateTime.now();
         final today = DateTime(now.year, now.month, now.day);
         if (date.isBefore(today)) {
-          status = "F";
+          return isLate ? "LF" : "F";
         }
+        return isLate ? "L" : "P";
       }
-
-      return status;
     }
 
     // Compute month-level status counts
@@ -394,7 +394,10 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
       } else if (status == "L") {
         lateCount++;
       } else if (status == "F") {
-        // Option 1: Count Forgot Checkout (F) in Present Days (since they worked, but forgot checkout)
+        // Option 1: Count Forgot Checkout (F) in Present Days
+        presentCount++;
+      } else if (status == "LF") {
+        lateCount++;
         presentCount++;
       }
     }
@@ -500,6 +503,9 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                       } else if (status == "F") {
                         bg = const Color(0xFFFCE8E6);
                         text = const Color(0xFFC5221F);
+                      } else if (status == "LF") {
+                        bg = const Color(0xFFFEE2E2);
+                        text = const Color(0xFF991B1B);
                       }
                     }
 
@@ -539,6 +545,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                     _buildLegendItem("L", "Late", const Color(0xFFFFF3E0), const Color(0xFFE65100)),
                     _buildLegendItem("E", "Early Out", const Color(0xFFE0F2FE), const Color(0xFF0369a1)),
                     _buildLegendItem("F", "Forgot Out", const Color(0xFFFCE8E6), const Color(0xFFC5221F)),
+                    _buildLegendItem("LF", "Late & Forgot", const Color(0xFFFEE2E2), const Color(0xFF991B1B)),
                   ],
                 ),
               ],

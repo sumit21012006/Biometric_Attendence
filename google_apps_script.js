@@ -111,7 +111,7 @@ function doPost(e) {
     // Convert timestamp with explicit Indian Standard Time (IST) formatting
     var dateObj = new Date(data.timestamp);
     var dateStr = Utilities.formatDate(dateObj, "Asia/Kolkata", "dd/MM/yyyy");
-    var timeStr = Utilities.formatDate(dateObj, "Asia/Kolkata", "hh:mm:ss a");
+    var timeStr = Utilities.formatDate(dateObj, "Asia/Kolkata", "hh:mm a");
 
     // Prevent multiple check-in or check-out in same day
     var incomingUid = String(data.uid || data.employeeId || "").trim();
@@ -255,7 +255,7 @@ function autoCheckOutDaily() {
       // Force time label to 5:00:00 PM
       var targetTime = new Date();
       targetTime.setHours(17, 0, 0, 0);
-      var timeStr = "05:00:00 PM";
+      var timeStr = "05:00 PM";
 
       // 1. Add check out record in Google Sheet
       var newRow = [
@@ -498,7 +498,8 @@ function generateMonthlyReport(targetMonth, targetYear) {
     var designation = String(row[5]).trim();
     var schoolName = String(row[6]).trim(); // Index 6 is School Name
 
-    if (!empId || empId === "N/A" || empId === "Employee ID" || empId === "undefined") continue;
+    var excludedIds = ["J0006", "J0004", "DEMO", "ADMIN"];
+    if (!empId || empId === "N/A" || empId === "Employee ID" || empId === "undefined" || excludedIds.indexOf(empId) !== -1) continue;
 
     if (!employees[empId]) {
       employees[empId] = {
@@ -511,7 +512,7 @@ function generateMonthlyReport(targetMonth, targetYear) {
 
       // Seed days grid with default 'A' (Absent) values
       for (var d = 1; d <= numDaysInMonth; d++) {
-        employees[empId].days[d] = { checkIn: "—", checkOut: "—", status: "A" };
+        employees[empId].days[d] = { checkIn: "—", checkOut: "—", status: "A", isLate: false, isAuto: false };
       }
     } else {
       // Keep the latest non-empty designation, name, or school name
@@ -546,40 +547,38 @@ function generateMonthlyReport(targetMonth, targetYear) {
     var timeStr = String(timeCell);
     if (timeCell instanceof Date) {
       timeStr = timeCell.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else {
+      // Strip seconds if present (e.g., "09:55:00 AM" -> "09:55 AM" or "14:30:15" -> "14:30")
+      timeStr = timeStr.replace(/:(\d{2}):\d{2}/, ':$1');
     }
 
     if (type === "CHECK IN") {
       dayData.checkIn = timeStr;
-      if (dayData.status !== "F") {
-        // Parse time to check if late (after 9:50 AM)
-        var hours = 0;
-        var minutes = 0;
-        if (timeCell instanceof Date) {
-          hours = timeCell.getHours();
-          minutes = timeCell.getMinutes();
-        } else {
-          // Parse string like "09:55:00 AM" or "10:15" or "14:30"
-          var timeMatches = String(timeCell).match(/(\d+):(\d+)(?::(\d+))?\s*(AM|PM)?/i);
-          if (timeMatches) {
-            hours = parseInt(timeMatches[1], 10);
-            minutes = parseInt(timeMatches[2], 10);
-            var ampm = timeMatches[4];
-            if (ampm && ampm.toUpperCase() === "PM" && hours < 12) hours += 12;
-            if (ampm && ampm.toUpperCase() === "AM" && hours === 12) hours = 0;
-          }
+      
+      // Parse time to check if late (after 9:50 AM)
+      var hours = 0;
+      var minutes = 0;
+      if (timeCell instanceof Date) {
+        hours = timeCell.getHours();
+        minutes = timeCell.getMinutes();
+      } else {
+        // Parse string like "09:55:00 AM" or "10:15" or "14:30"
+        var timeMatches = String(timeCell).match(/(\d+):(\d+)(?::(\d+))?\s*(AM|PM)?/i);
+        if (timeMatches) {
+          hours = parseInt(timeMatches[1], 10);
+          minutes = parseInt(timeMatches[2], 10);
+          var ampm = timeMatches[4];
+          if (ampm && ampm.toUpperCase() === "PM" && hours < 12) hours += 12;
+          if (ampm && ampm.toUpperCase() === "AM" && hours === 12) hours = 0;
         }
-
-        var isLate = hours > 9 || (hours === 9 && minutes > 50);
-        dayData.status = isLate ? "L" : "P";
       }
+      dayData.isLate = hours > 9 || (hours === 9 && minutes > 50);
     } else if (type === "CHECK OUT") {
       dayData.checkOut = timeStr;
-      if (dayData.status !== "F" && dayData.status !== "L") {
-        dayData.status = "P"; // Marked Present if not already marked Late or Forgot checkout
-      }
+      dayData.isAuto = false;
     } else if (type === "CHECK OUT (AUTO)") {
       dayData.checkOut = timeStr;
-      dayData.status = "F"; // Auto check out / Forgot check out
+      dayData.isAuto = true;
     }
   }
 
@@ -612,16 +611,82 @@ function generateMonthlyReport(targetMonth, targetYear) {
   var employeeIds = Object.keys(employees);
   var rowDataList = [];
 
+  // Helper to parse hours and minutes from string times (e.g. "09:55 AM" or "14:30")
+  function parseTimeStr(timeStr) {
+    var hours = 0;
+    var minutes = 0;
+    if (timeStr && timeStr !== "—") {
+      var timeMatches = String(timeStr).match(/(\d+):(\d+)(?::(\d+))?\s*(AM|PM)?/i);
+      if (timeMatches) {
+        hours = parseInt(timeMatches[1], 10);
+        minutes = parseInt(timeMatches[2], 10);
+        var ampm = timeMatches[4];
+        if (ampm && ampm.toUpperCase() === "PM" && hours < 12) hours += 12;
+        if (ampm && ampm.toUpperCase() === "AM" && hours === 12) hours = 0;
+      }
+    }
+    return { hours: hours, minutes: minutes };
+  }
+
   for (var k = 0; k < employeeIds.length; k++) {
     var emp = employees[employeeIds[k]];
     var rowData = [emp.empId, emp.name, emp.designation, emp.schoolName || "N/A"];
 
     for (var d = 1; d <= numDaysInMonth; d++) {
       var dayGrid = emp.days[d];
-      rowData.push(dayGrid.checkIn, dayGrid.checkOut, dayGrid.status);
+      
+      var finalStatus = "A"; // Default to Absent
+      if (dayGrid.checkIn !== "—") {
+        var isLate = dayGrid.isLate || false;
+        var hasCheckout = dayGrid.checkOut !== "—";
+        var isAuto = dayGrid.isAuto || false;
+        
+        // Check if the day is in the past
+        var cellDate = new Date(reportYear, reportMonth, d);
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        var isPastDay = cellDate < today;
+
+        if (hasCheckout) {
+          if (isAuto) {
+            finalStatus = isLate ? "LF" : "F";
+          } else {
+            // Checked out manually. Check if early (before 2:00 PM / 14:00)
+            var checkoutTime = parseTimeStr(dayGrid.checkOut);
+            if (checkoutTime.hours < 14) {
+              finalStatus = "E"; // Early checkout
+            } else {
+              finalStatus = isLate ? "L" : "P";
+            }
+          }
+        } else {
+          if (isPastDay) {
+            // Late or on-time check-in, but forgot checkout on a past day
+            finalStatus = isLate ? "LF" : "F";
+          } else {
+            // Still checked in/active today
+            finalStatus = isLate ? "L" : "P";
+          }
+        }
+      }
+      
+      rowData.push(dayGrid.checkIn, dayGrid.checkOut, finalStatus);
     }
     rowDataList.push(rowData);
   }
+
+  // Sort rows alphabetically/numerically by Employee ID
+  rowDataList.sort(function (a, b) {
+    var idA = String(a[0]).trim().toLowerCase();
+    var idB = String(b[0]).trim().toLowerCase();
+
+    var numA = parseFloat(idA);
+    var numB = parseFloat(idB);
+    if (!isNaN(numA) && !isNaN(numB)) {
+      return numA - numB;
+    }
+    return idA.localeCompare(idB);
+  });
 
   if (rowDataList.length > 0) {
     reportSheet.getRange(3, 1, rowDataList.length, 4 + numDaysInMonth * 3).setValues(rowDataList);
@@ -651,7 +716,7 @@ function generateMonthlyReport(targetMonth, targetYear) {
 
     var gridDataRange = reportSheet.getRange(3, 5, totalRows - 2, totalCols - 4);
     gridDataRange.setHorizontalAlignment("center"); // Timing & status columns
-    gridDataRange.setFontWeight("bold"); // Statically make all timing & status values bold!
+    gridDataRange.setFontWeight("normal"); // Default timing & status columns to normal weight
   }
 
   // Freeze Headers and employee details columns for high-fidelity scroll experience
@@ -661,7 +726,20 @@ function generateMonthlyReport(targetMonth, targetYear) {
   // Resize columns
   reportSheet.autoResizeColumns(1, 4);
   for (var col = 5; col <= totalCols; col++) {
-    reportSheet.setColumnWidth(col, 68); // standard compact width for timestamps & status
+    // Make status columns narrower than In/Out columns
+    if ((col - 5) % 3 === 2) {
+      reportSheet.setColumnWidth(col, 45); // compact width perfect for status text (P/A/L/F)
+      if (totalRows > 2) {
+        reportSheet.getRange(3, col, totalRows - 2, 1).setFontWeight("bold"); // Keep status letters bold
+      }
+    } else {
+      reportSheet.setColumnWidth(col, 68); // standard compact width for timestamps
+      // Set number format to h:mm AM/PM to force Google Sheets to hide seconds
+      if (totalRows > 2) {
+        reportSheet.getRange(3, col, totalRows - 2, 1).setNumberFormat("h:mm AM/PM");
+        reportSheet.getRange(3, col, totalRows - 2, 1).setFontWeight("normal"); // Explicitly ensure timings are normal weight
+      }
+    }
   }
 
   // --- Automatic Conditional Rules Formatting ---
@@ -700,10 +778,28 @@ function generateMonthlyReport(targetMonth, targetYear) {
       .setRanges([statusRange])
       .build();
 
+    // 'LF' (Late & Forgot Checkout) -> Soft Red Background
+    var ruleLF = SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo("LF")
+      .setBackground("#fee2e2")
+      .setFontColor("#991b1b")
+      .setRanges([statusRange])
+      .build();
+
+    // 'E' (Early Checkout) -> Soft Blue Background
+    var ruleE = SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo("E")
+      .setBackground("#e0f2fe")
+      .setFontColor("#0369a1")
+      .setRanges([statusRange])
+      .build();
+
     var rules = reportSheet.getConditionalFormatRules();
     rules.push(ruleP);
     rules.push(ruleL);
+    rules.push(ruleE);
     rules.push(ruleF);
+    rules.push(ruleLF);
     rules.push(ruleA);
     reportSheet.setConditionalFormatRules(rules);
   }
